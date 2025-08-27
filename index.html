@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nano Banana 图像生成工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 40px;
+            font-size: 2.5em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 5px;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 15px 30px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            color: #666;
+        }
+
+        .tab-button.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            background: white;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-display {
+            padding: 15px;
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            text-align: center;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .file-input-display:hover {
+            background: #e9ecef;
+            border-color: #764ba2;
+        }
+
+        .file-input-display.has-file {
+            border-style: solid;
+            background: #e8f4fd;
+        }
+
+        .generate-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .generate-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result {
+            margin-top: 30px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        .result img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .download-btn {
+            padding: 12px 30px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+
+        .download-btn:hover {
+            background: #218838;
+            transform: translateY(-1px);
+        }
+
+        .preview-container {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .preview-image {
+            max-width: 300px;
+            max-height: 300px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 1px solid #f5c6cb;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            .tabs {
+                flex-direction: column;
+            }
+
+            .tab-button {
+                margin-bottom: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍌 Nano Banana 图像生成工具</h1>
+        
+        <div class="tabs">
+            <button class="tab-button active" onclick="switchTab('text-to-image')">文本生成图像</button>
+            <button class="tab-button" onclick="switchTab('image-edit')">图像修改</button>
+        </div>
+
+        <!-- 文本生成图像 -->
+        <div id="text-to-image" class="tab-content active">
+            <div class="input-group">
+                <label for="text-prompt">描述提示词</label>
+                <textarea id="text-prompt" placeholder="请输入您想要生成图像的详细描述，例如：Create a picture of a nano banana dish in a fancy restaurant with a Gemini theme"></textarea>
+            </div>
+            <button class="generate-btn" onclick="generateFromText()">生成图像</button>
+        </div>
+
+        <!-- 图像修改 -->
+        <div id="image-edit" class="tab-content">
+            <div class="input-group">
+                <label for="edit-prompt">修改提示词</label>
+                <textarea id="edit-prompt" placeholder="请输入您想要对图像进行的修改描述，例如：Create a picture of my cat eating a nano-banana in a fancy restaurant under the Gemini constellation"></textarea>
+            </div>
+            <div class="input-group">
+                <label for="source-image">选择源图像</label>
+                <div class="file-input-wrapper">
+                    <input type="file" id="source-image" accept="image/*" onchange="previewImage(this)">
+                    <div class="file-input-display">
+                        <span id="file-display-text">点击选择图像文件或拖拽到此处</span>
+                    </div>
+                </div>
+                <div id="image-preview" class="preview-container" style="display: none;">
+                    <img id="preview-img" class="preview-image" src="" alt="预览图像">
+                </div>
+            </div>
+            <button class="generate-btn" onclick="generateFromImage()">修改图像</button>
+        </div>
+
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>正在生成图像，请稍候...</p>
+        </div>
+
+        <div class="error">
+            <p id="error-message"></p>
+        </div>
+
+        <div class="result">
+            <h3>生成结果</h3>
+            <img id="result-image" src="" alt="生成的图像">
+            <br>
+            <button class="download-btn" onclick="downloadImage()">下载图像</button>
+        </div>
+    </div>
+
+    <script>
+        // API配置
+        const API_KEY = 'AIzaSyDe_s2wtkciCI3X2IxARuPUZNnEWZ2ckJM';
+        const MODEL = 'gemini-2.5-flash-image-preview';
+        
+        let currentImageData = null;
+        let selectedFile = null;
+
+        // 切换标签页
+        function switchTab(tabId) {
+            // 隐藏所有标签内容
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // 移除所有按钮的active类
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            
+            // 显示选中的标签内容
+            document.getElementById(tabId).classList.add('active');
+            
+            // 激活对应的按钮
+            event.target.classList.add('active');
+            
+            // 清除之前的结果和错误
+            hideResult();
+            hideError();
+        }
+
+        // 预览选择的图像
+        function previewImage(input) {
+            const file = input.files[0];
+            if (file) {
+                selectedFile = file;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('preview-img').src = e.target.result;
+                    document.getElementById('image-preview').style.display = 'block';
+                    document.getElementById('file-display-text').textContent = file.name;
+                    document.querySelector('.file-input-display').classList.add('has-file');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // 显示加载状态
+        function showLoading() {
+            document.querySelector('.loading').classList.add('show');
+            document.querySelectorAll('.generate-btn').forEach(btn => {
+                btn.disabled = true;
+            });
+        }
+
+        // 隐藏加载状态
+        function hideLoading() {
+            document.querySelector('.loading').classList.remove('show');
+            document.querySelectorAll('.generate-btn').forEach(btn => {
+                btn.disabled = false;
+            });
+        }
+
+        // 显示错误
+        function showError(message) {
+            document.getElementById('error-message').textContent = message;
+            document.querySelector('.error').classList.add('show');
+        }
+
+        // 隐藏错误
+        function hideError() {
+            document.querySelector('.error').classList.remove('show');
+        }
+
+        // 显示结果
+        function showResult(imageData) {
+            currentImageData = imageData;
+            document.getElementById('result-image').src = `data:image/png;base64,${imageData}`;
+            document.querySelector('.result').classList.add('show');
+        }
+
+        // 隐藏结果
+        function hideResult() {
+            document.querySelector('.result').classList.remove('show');
+        }
+
+        // 文件转换为base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => {
+                    const base64 = reader.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        // 文本生成图像
+        async function generateFromText() {
+            const prompt = document.getElementById('text-prompt').value.trim();
+            
+            if (!prompt) {
+                showError('请输入描述提示词');
+                return;
+            }
+
+            hideError();
+            hideResult();
+            showLoading();
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: prompt
+                            }]
+                        }]
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || `HTTP错误: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+                    for (const part of data.candidates[0].content.parts) {
+                        if (part.inlineData && part.inlineData.data) {
+                            showResult(part.inlineData.data);
+                            return;
+                        }
+                    }
+                    throw new Error('响应中未找到图像数据');
+                } else {
+                    throw new Error('API返回格式错误');
+                }
+            } catch (error) {
+                console.error('生成图像错误:', error);
+                showError(`生成图像失败: ${error.message}`);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // 图像修改
+        async function generateFromImage() {
+            const prompt = document.getElementById('edit-prompt').value.trim();
+            
+            if (!prompt) {
+                showError('请输入修改提示词');
+                return;
+            }
+
+            if (!selectedFile) {
+                showError('请选择源图像文件');
+                return;
+            }
+
+            hideError();
+            hideResult();
+            showLoading();
+
+            try {
+                const imageBase64 = await fileToBase64(selectedFile);
+                const mimeType = selectedFile.type;
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                {
+                                    text: prompt
+                                },
+                                {
+                                    inlineData: {
+                                        mimeType: mimeType,
+                                        data: imageBase64
+                                    }
+                                }
+                            ]
+                        }]
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || `HTTP错误: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+                    for (const part of data.candidates[0].content.parts) {
+                        if (part.inlineData && part.inlineData.data) {
+                            showResult(part.inlineData.data);
+                            return;
+                        }
+                    }
+                    throw new Error('响应中未找到图像数据');
+                } else {
+                    throw new Error('API返回格式错误');
+                }
+            } catch (error) {
+                console.error('修改图像错误:', error);
+                showError(`修改图像失败: ${error.message}`);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // 下载图像
+        function downloadImage() {
+            if (!currentImageData) {
+                showError('没有可下载的图像');
+                return;
+            }
+
+            const link = document.createElement('a');
+            link.href = `data:image/png;base64,${currentImageData}`;
+            link.download = `nano_banana_generated_${Date.now()}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // 拖拽上传功能
+        const fileInputDisplay = document.querySelector('.file-input-display');
+        
+        fileInputDisplay.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileInputDisplay.style.borderColor = '#764ba2';
+            fileInputDisplay.style.background = '#e9ecef';
+        });
+
+        fileInputDisplay.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            fileInputDisplay.style.borderColor = '#667eea';
+            fileInputDisplay.style.background = '#f8f9fa';
+        });
+
+        fileInputDisplay.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileInputDisplay.style.borderColor = '#667eea';
+            fileInputDisplay.style.background = '#f8f9fa';
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type.startsWith('image/')) {
+                const fileInput = document.getElementById('source-image');
+                fileInput.files = files;
+                previewImage(fileInput);
+            }
+        });
+    </script>
+</body>
+</html>
