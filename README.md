@@ -10,49 +10,55 @@
 - **拖拽上传**: 支持拖拽文件上传
 - **图像预览**: 上传前可预览源图像
 - **一键下载**: 生成的图像可直接下载
+- **🔒 安全保护**: API密钥通过服务器端保护，不在前端暴露
 
 ## 技术栈
 
 - 前端: HTML5, CSS3, JavaScript (ES6+)
+- 后端: Node.js, Express  
 - API: Google Gemini 2.5 Flash Image Preview
-- 部署: 支持任何静态网站托管服务
+- 部署: Vercel, Netlify 等平台
+
+## ⚠️ 重要安全提醒
+
+**如果你之前使用了暴露的API密钥，请立即:**
+1. 前往 [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+2. 撤销旧的API密钥
+3. 生成新的API密钥
+
+## 本地开发设置
+
+### 1. 环境配置
+```bash
+# 复制环境变量模板
+cp .env.example .env
+
+# 编辑 .env 文件，添加你的API密钥
+# GEMINI_API_KEY=你的新API密钥
+```
+
+### 2. 安装和运行
+```bash
+npm install
+npm start
+```
+
+访问 http://localhost:3000
 
 ## 部署选项
 
-### 方案1: Vercel (推荐)
-1. 将项目文件上传到 [Vercel](https://vercel.com)
-2. 导入项目并自动部署
-3. 获得形如 `https://your-project.vercel.app` 的公开URL
+### Vercel 部署 (推荐)
+1. 在 Vercel 项目设置中添加环境变量:
+   - Key: `GEMINI_API_KEY`
+   - Value: 你的Gemini API密钥
+2. 连接GitHub仓库
+3. 自动部署
 
-### 方案2: Netlify
-1. 将项目文件上传到 [Netlify](https://netlify.com)
-2. 拖拽文件夹到部署区域
-3. 获得形如 `https://your-project.netlify.app` 的公开URL
-
-### 方案3: GitHub Pages
-1. 创建GitHub仓库
-2. 上传项目文件
-3. 在仓库设置中启用GitHub Pages
-4. 获得形如 `https://username.github.io/repo-name` 的公开URL
-
-### 方案4: Firebase Hosting
-1. 使用 Firebase CLI 初始化项目
-2. 部署到 Firebase Hosting
-3. 获得形如 `https://your-project.web.app` 的公开URL
-
-## 本地运行
-
-1. 下载所有文件
-2. 在浏览器中打开 `index.html`
-3. 开始使用图像生成功能
-
-## API 配置
-
-工具使用 Google Gemini API，API密钥已预配置。如需更换：
-
-1. 打开 `index.html`
-2. 找到 `API_KEY` 变量
-3. 替换为您的 Gemini API 密钥
+### Netlify 部署
+1. 在 Netlify 站点设置中添加环境变量:
+   - Key: `GEMINI_API_KEY` 
+   - Value: 你的Gemini API密钥
+2. 连接仓库并部署
 
 ## 使用说明
 
@@ -68,6 +74,13 @@
 3. 选择或拖拽源图像文件
 4. 点击"修改图像"
 5. 等待生成完成并下载
+
+## 安全架构
+
+现在API密钥安全地存储在服务器端：
+- 前端通过 `/api/generate-image` 和 `/api/edit-image` 调用后端API
+- 后端代理请求到 Google Gemini API
+- API密钥仅在服务器环境中使用，不会暴露给客户端
 
 ## 注意事项
 
