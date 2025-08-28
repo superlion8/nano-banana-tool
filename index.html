@@ -549,6 +549,11 @@
                 return;
             }
 
+            // 调试信息
+            console.log('generateFromImage called');
+            console.log('selectedFile:', selectedFile);
+            console.log('selectedFile type:', selectedFile ? selectedFile.type : 'undefined');
+            
             if (!selectedFile) {
                 showError('请选择源图像文件');
                 return;
@@ -561,6 +566,11 @@
             try {
                 const imageBase64 = await fileToBase64(selectedFile);
                 const mimeType = selectedFile.type;
+                
+                // 调试信息
+                console.log('Image base64 length:', imageBase64.length);
+                console.log('MIME type:', mimeType);
+                console.log('Prompt:', prompt);
 
                 const response = await fetch(`${API_BASE}/api/edit-image`, {
                     method: 'POST',
@@ -646,9 +656,26 @@
             
             const files = e.dataTransfer.files;
             if (files.length > 0 && files[0].type.startsWith('image/')) {
+                // 直接设置selectedFile而不依赖input.files
+                const file = files[0];
+                selectedFile = file;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('preview-img').src = e.target.result;
+                    document.getElementById('image-preview').style.display = 'block';
+                    document.getElementById('file-display-text').textContent = file.name;
+                    document.querySelector('.file-input-display').classList.add('has-file');
+                };
+                reader.readAsDataURL(file);
+                
+                // 尝试同时设置input.files用于兼容性
                 const fileInput = document.getElementById('source-image');
-                fileInput.files = files;
-                previewImage(fileInput);
+                try {
+                    fileInput.files = files;
+                } catch(e) {
+                    // 某些浏览器不允许设置files属性，但selectedFile已经设置了
+                    console.log('Could not set input.files, but selectedFile is set');
+                }
             }
         });
     </script>
