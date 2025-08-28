@@ -16,7 +16,9 @@
       "dest": "/$1"
     }
   ],
-  "env": {
-    "GEMINI_API_KEY": "@gemini_api_key"
-  }
+  "functions": {
+    "server.js": {
+      "maxDuration": 30
+    }
+  },
 }

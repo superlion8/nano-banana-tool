@@ -3,6 +3,17 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
+// 动态导入fetch (Node.js 18+有内置fetch，但为了兼容性使用node-fetch)
+let fetch;
+(async () => {
+    if (typeof globalThis.fetch === 'undefined') {
+        const { default: nodeFetch } = await import('node-fetch');
+        fetch = nodeFetch;
+    } else {
+        fetch = globalThis.fetch;
+    }
+})();
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -21,6 +32,16 @@ if (!API_KEY) {
 // 代理文本生成图片API
 app.post('/api/generate-image', async (req, res) => {
     try {
+        // 确保fetch已加载
+        if (!fetch) {
+            if (typeof globalThis.fetch === 'undefined') {
+                const { default: nodeFetch } = await import('node-fetch');
+                fetch = nodeFetch;
+            } else {
+                fetch = globalThis.fetch;
+            }
+        }
+        
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
             method: 'POST',
             headers: {
@@ -46,6 +67,16 @@ app.post('/api/generate-image', async (req, res) => {
 // 代理图片编辑API
 app.post('/api/edit-image', async (req, res) => {
     try {
+        // 确保fetch已加载
+        if (!fetch) {
+            if (typeof globalThis.fetch === 'undefined') {
+                const { default: nodeFetch } = await import('node-fetch');
+                fetch = nodeFetch;
+            } else {
+                fetch = globalThis.fetch;
+            }
+        }
+        
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
             method: 'POST',
             headers: {
