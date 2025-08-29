@@ -19,13 +19,6 @@
 - API: Google Gemini 2.5 Flash Image Preview
 - 部署: Vercel, Netlify 等平台
 
-## ⚠️ 重要安全提醒
-
-**如果你之前使用了暴露的API密钥，请立即:**
-1. 前往 [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
-2. 撤销旧的API密钥
-3. 生成新的API密钥
-
 ## 本地开发设置
 
 ### 1. 环境配置
@@ -88,10 +81,6 @@ npm start
 - 图像生成可能需要10-30秒
 - 支持常见图像格式 (JPG, PNG, GIF, WebP)
 - 生成的图像为PNG格式
-
-## 技术支持
-
-如有问题或建议，请创建Issue或联系开发者。
 
 ---
 
