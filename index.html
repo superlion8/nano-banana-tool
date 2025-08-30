@@ -2338,6 +2338,11 @@
             const resultSection = document.querySelector('.result');
             const initialPlaceholder = document.getElementById('initial-placeholder');
             
+            // 先隐藏占位符
+            if (initialPlaceholder) {
+                initialPlaceholder.style.display = 'none';
+            }
+            
             if (resultSection) {
                 // 清空结果区域并显示状态
                 resultSection.innerHTML = `
@@ -2349,16 +2354,6 @@
                 resultSection.style.display = 'block';
                 resultSection.classList.add('show');
                 console.log('在结果区域显示生成状态:', message);
-            } else if (initialPlaceholder) {
-                // 如果没有结果区域，在占位符区域显示
-                initialPlaceholder.innerHTML = `
-                    <div class="generation-status-inline">
-                        <div class="status-spinner"></div>
-                        <p>${message}</p>
-                    </div>
-                `;
-                initialPlaceholder.style.display = 'block';
-                console.log('在占位符区域显示生成状态:', message);
             }
         }
         
@@ -2699,12 +2694,14 @@
                     </div>
                 `;
                 
+                resultDiv.style.display = 'block';
                 resultDiv.classList.add('show');
                 console.log('已恢复结果区域HTML并添加show类');
             } else {
                 console.error('未找到result div元素');
             }
             
+            // 确保占位符被隐藏
             if (placeholder) {
                 placeholder.style.display = 'none';
                 console.log('已隐藏占位符');
@@ -2733,7 +2730,8 @@
             
             if (resultDiv) {
                 resultDiv.classList.remove('show');
-                console.log('已移除show类从result div');
+                resultDiv.style.display = 'none';
+                console.log('已隐藏result div');
             } else {
                 console.error('未找到result div元素');
             }
