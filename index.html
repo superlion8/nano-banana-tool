@@ -983,6 +983,7 @@
                         <button class="test-btn" onclick="addTestHistory()" style="margin-left: 10px; padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer;">添加测试记录</button>
                         <button class="cleanup-btn" onclick="cleanupOldHistoryData()" style="margin-left: 10px; padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer;">清理旧数据</button>
                         <button class="supabase-info-btn" onclick="showSupabaseInfo()" style="margin-left: 10px; padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 6px; cursor: pointer;">Supabase配置</button>
+                        <button class="test-connection-btn" onclick="testSupabaseConnection()" style="margin-left: 10px; padding: 8px 16px; background: #fd7e14; color: white; border: none; border-radius: 6px; cursor: pointer;">测试连接</button>
                     </div>
 
                     <!-- 图像编辑 -->
@@ -1115,16 +1116,18 @@
         // 3. 创建以下数据表：
         //    - users: id, email, name, avatar_url, created_at
         //    - history: id, user_id, type, prompt, result_image, input_images, created_at
-        const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // 替换为你的Supabase项目URL
-        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // 替换为你的Supabase匿名密钥
+        const SUPABASE_URL = 'https://cvdogeigbpussfamctsu.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2ZG9nZWlnYnB1c3NmYW1jdHN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY1NjEyMjUsImV4cCI6MjA3MjEzNzIyNX0.JSY1sEK1aLaqaIp5_MTM_99XERVaDY18akQeKCDYEik';
         
         // 初始化Supabase客户端
         let supabase = null;
-        if (SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
+        try {
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             console.log('✅ Supabase客户端已初始化');
-        } else {
-            console.warn('⚠️ Supabase未配置，将使用localStorage作为备选方案');
+            console.log('Supabase URL:', SUPABASE_URL);
+        } catch (error) {
+            console.error('❌ Supabase客户端初始化失败:', error);
+            console.warn('⚠️ 将使用localStorage作为备选方案');
         }
 
         // 切换主标签页（Editor/History）
@@ -2062,16 +2065,50 @@
         
         // 显示Supabase配置信息
         function showSupabaseInfo() {
-            const isConfigured = SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY';
-            
             let message = '';
-            if (isConfigured) {
-                message = `✅ Supabase已配置\nURL: ${SUPABASE_URL}\n状态: 已连接`;
+            if (supabase) {
+                message = `✅ Supabase已配置\nURL: ${SUPABASE_URL}\n状态: 已连接\n\n点击"测试连接"按钮验证数据库连接`;
             } else {
-                message = `⚠️ Supabase未配置\n\n请按以下步骤配置：\n1. 访问 https://supabase.com/\n2. 创建新项目\n3. 在项目设置中获取URL和anon key\n4. 更新代码中的配置\n5. 创建数据表：\n   - users: id, email, name, avatar_url, created_at\n   - history: id, user_id, type, prompt, result_image, input_images, created_at`;
+                message = `❌ Supabase连接失败\nURL: ${SUPABASE_URL}\n请检查配置和网络连接`;
             }
             
             alert(message);
+        }
+        
+        // 测试Supabase连接
+        async function testSupabaseConnection() {
+            if (!supabase) {
+                alert('❌ Supabase客户端未初始化');
+                return;
+            }
+            
+            try {
+                console.log('测试Supabase连接...');
+                
+                // 测试基本连接
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('count')
+                    .limit(1);
+                
+                if (error) {
+                    if (error.code === 'PGRST116') {
+                        // 表不存在，这是正常的
+                        console.log('✅ Supabase连接成功，但users表不存在');
+                        alert('✅ Supabase连接成功！\n\n下一步：请在Supabase中创建以下数据表：\n\n1. users表：\n   - id (TEXT, PRIMARY KEY)\n   - email (TEXT, NOT NULL)\n   - name (TEXT)\n   - avatar_url (TEXT)\n   - created_at (TIMESTAMP)\n\n2. history表：\n   - id (SERIAL, PRIMARY KEY)\n   - user_id (TEXT, REFERENCES users(id))\n   - type (TEXT, NOT NULL)\n   - prompt (TEXT, NOT NULL)\n   - result_image (TEXT, NOT NULL)\n   - input_images (JSONB)\n   - created_at (TIMESTAMP)');
+                    } else {
+                        console.error('Supabase连接测试失败:', error);
+                        alert(`❌ Supabase连接测试失败：\n${error.message}`);
+                    }
+                } else {
+                    console.log('✅ Supabase连接成功，users表存在');
+                    alert('✅ Supabase连接成功！\nusers表已存在，可以开始使用。');
+                }
+                
+            } catch (error) {
+                console.error('Supabase连接测试错误:', error);
+                alert(`❌ Supabase连接测试错误：\n${error.message}`);
+            }
         }
         
         // 显示成功消息
