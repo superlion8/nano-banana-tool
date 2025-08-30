@@ -795,11 +795,16 @@
                     successMessage.classList.remove('show');
                 }
                 
-                // 清空多图选择
-                if (tabId !== 'multi-image') {
-                    selectedMultiFiles = [];
-                    updateMultiImagePreview();
+                            // 清空多图选择
+            if (tabId !== 'multi-image') {
+                selectedMultiFiles = [];
+                updateMultiImagePreview();
+            } else {
+                // 如果切换到多图生成标签页，显示引用提示
+                if (selectedMultiFiles.length > 0) {
+                    showSuccessMessage(`已加载 ${selectedMultiFiles.length} 张图像，您可以继续添加更多图像或直接生成`);
                 }
+            }
                 
                 console.log('Tab switched successfully to:', tabId);
             } catch (error) {
@@ -1003,14 +1008,17 @@
                 return;
             }
 
-            // 切换到图像修改标签页
-            switchTab('image-edit');
+            // 切换到多图生成标签页
+            switchTab('multi-image');
             
-            // 设置引用图像
-            setReferencedImage(currentImageData);
+            // 清空当前多图选择
+            selectedMultiFiles = [];
+            
+            // 将引用的图像添加到多图选择中
+            addReferencedImageToMulti(currentImageData);
             
             // 显示成功提示
-            showSuccessMessage('图像已引用到编辑区域，请在上方输入修改提示词');
+            showSuccessMessage('图像已引用到多图生成区域，您可以继续添加更多图像进行下一步编辑');
         }
 
 
@@ -1052,6 +1060,42 @@
                     console.error('引用图像失败:', error);
                     showError('引用图像失败');
                 });
+        }
+
+        // 将引用的图像添加到多图选择中
+        function addReferencedImageToMulti(base64Data) {
+            // 创建图像文件对象
+            const byteCharacters = atob(base64Data);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'image/png' });
+            
+            // 创建文件对象
+            const file = new File([blob], 'referenced_image.png', { type: 'image/png' });
+            
+            // 添加到多图选择中
+            selectedMultiFiles.push(file);
+            
+            // 更新多图预览
+            updateMultiImagePreview();
+            
+            // 显示智能提示
+            showReferenceHint();
+        }
+
+        // 显示引用提示
+        function showReferenceHint() {
+            const count = selectedMultiFiles.length;
+            if (count === 1) {
+                showSuccessMessage('图像已引用！您可以继续添加更多图像（最多3张），或直接生成新图像');
+            } else if (count === 2) {
+                showSuccessMessage('已引用2张图像！您可以再添加1张图像，或直接生成新图像');
+            } else if (count === 3) {
+                showSuccessMessage('已引用3张图像！图像数量已满，您可以开始生成新图像');
+            }
         }
 
         // 更新图像预览
