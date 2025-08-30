@@ -977,6 +977,7 @@
                         <button class="generate-btn" onclick="generateFromText()">生成图像</button>
                         <button class="debug-btn" onclick="debugLocalStorage()" style="margin-left: 10px; padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer;">调试历史</button>
                         <button class="test-btn" onclick="addTestHistory()" style="margin-left: 10px; padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer;">添加测试记录</button>
+                        <button class="cleanup-btn" onclick="cleanupOldHistoryData()" style="margin-left: 10px; padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer;">清理旧数据</button>
                     </div>
 
                     <!-- 图像编辑 -->
@@ -1292,12 +1293,17 @@
                 // 这里应该是真实的用户信息，从Google API获取
                 // 暂时使用模拟数据，但结构更真实
                 // 在实际实现中，这些信息应该从Google People API获取
+                
+                // 使用邮箱作为稳定的用户标识符，避免每次登录生成不同的ID
+                const userEmail = 'user@gmail.com';
+                const stableUserId = 'google_' + btoa(userEmail).replace(/[^a-zA-Z0-9]/g, '');
+                
                 const googleUser = {
-                    id: 'google_' + Date.now(),
-                    email: 'user@gmail.com', // 这里应该是真实的Google邮箱
+                    id: stableUserId,
+                    email: userEmail, // 这里应该是真实的Google邮箱
                     name: 'Google用户', // 这里应该是真实的Google用户名
                     avatar: 'https://lh3.googleusercontent.com/a/default-user', // 这里应该是真实的Google头像URL
-                    googleId: 'google_' + Date.now(),
+                    googleId: stableUserId,
                     picture: 'https://lh3.googleusercontent.com/a/default-user' // Google头像URL
                 };
                 
@@ -1582,6 +1588,7 @@
             
             const storageKey = `nanoBananaHistory_${currentUser.id}`;
             console.log('saveUserHistoryToStorage: 保存到存储键:', storageKey);
+            console.log('saveUserHistoryToStorage: 当前用户ID:', currentUser.id);
             console.log('saveUserHistoryToStorage: 保存的历史记录数量:', userHistory.length);
             
             try {
@@ -1593,6 +1600,15 @@
                 if (savedData) {
                     const parsedData = JSON.parse(savedData);
                     console.log('saveUserHistoryToStorage: 验证保存成功，存储的数据数量:', parsedData.length);
+                    
+                    // 列出所有相关的localStorage键
+                    console.log('saveUserHistoryToStorage: 当前localStorage中的所有键:');
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key && key.includes('nanoBananaHistory')) {
+                            console.log('  -', key);
+                        }
+                    }
                 } else {
                     console.error('saveUserHistoryToStorage: 验证失败，存储后无法读取数据');
                 }
@@ -1610,6 +1626,22 @@
             
             const storageKey = `nanoBananaHistory_${currentUser.id}`;
             console.log('loadUserHistoryFromStorage: 尝试加载存储键:', storageKey);
+            console.log('loadUserHistoryFromStorage: 当前用户ID:', currentUser.id);
+            
+            // 列出所有相关的localStorage键，帮助调试
+            console.log('loadUserHistoryFromStorage: 当前localStorage中的所有相关键:');
+            let foundKeys = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.includes('nanoBananaHistory')) {
+                    foundKeys.push(key);
+                    console.log('  -', key);
+                }
+            }
+            
+            if (foundKeys.length === 0) {
+                console.log('loadUserHistoryFromStorage: 没有找到任何历史记录相关的存储键');
+            }
             
             try {
                 const savedHistory = localStorage.getItem(storageKey);
@@ -1621,6 +1653,7 @@
                     return true;
                 } else {
                     console.log('loadUserHistoryFromStorage: 没有找到保存的历史记录');
+                    console.log('loadUserHistoryFromStorage: 可能的原因：存储键不匹配或数据已被清除');
                 }
             } catch (error) {
                 console.error('loadUserHistoryFromStorage: 解析历史记录失败:', error);
@@ -1822,6 +1855,45 @@
             saveUserHistoryToStorage();
             renderHistory();
             console.log('测试历史记录已添加，当前长度:', userHistory.length);
+        }
+        
+        // 清理函数：清理localStorage中的旧测试数据
+        function cleanupOldHistoryData() {
+            console.log('=== 清理旧的测试数据 ===');
+            const keysToRemove = [];
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.includes('nanoBananaHistory')) {
+                    console.log('找到历史记录键:', key);
+                    try {
+                        const data = localStorage.getItem(key);
+                        if (data) {
+                            const parsed = JSON.parse(data);
+                            console.log('  - 数据长度:', parsed.length, '条记录');
+                            if (parsed.length === 0) {
+                                console.log('  - 空数据，标记为删除');
+                                keysToRemove.push(key);
+                            }
+                        }
+                    } catch (e) {
+                        console.log('  - 数据损坏，标记为删除');
+                        keysToRemove.push(key);
+                    }
+                }
+            }
+            
+            if (keysToRemove.length > 0) {
+                console.log('准备删除以下键:', keysToRemove);
+                keysToRemove.forEach(key => {
+                    localStorage.removeItem(key);
+                    console.log('已删除:', key);
+                });
+            } else {
+                console.log('没有需要清理的数据');
+            }
+            
+            console.log('=== 清理完成 ===');
         }
         
         // 显示成功消息
