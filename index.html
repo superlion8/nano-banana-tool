@@ -310,6 +310,34 @@
             display: block;
             opacity: 1;
         }
+        
+        /* 内联生成状态提示样式 */
+        .generation-status-inline {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+        
+        .generation-status-inline p {
+            margin: 20px 0 0 0;
+            font-size: 16px;
+            color: #333;
+        }
+        
+        .status-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #764ba2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
 
         .result-image-container {
             text-align: center;
@@ -2306,40 +2334,39 @@
         
         // 显示生成状态提示
         function showGenerationStatus(message) {
-            // 创建或更新生成状态提示
-            let statusDiv = document.getElementById('generation-status');
-            if (!statusDiv) {
-                statusDiv = document.createElement('div');
-                statusDiv.id = 'generation-status';
-                statusDiv.style.cssText = `
-                    position: fixed;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    background: rgba(0, 0, 0, 0.8);
-                    color: white;
-                    padding: 20px 30px;
-                    border-radius: 10px;
-                    z-index: 10001;
-                    font-size: 16px;
-                    text-align: center;
-                    min-width: 200px;
-                `;
-                document.body.appendChild(statusDiv);
-            }
+            // 在右侧生成区域显示状态提示
+            const resultSection = document.querySelector('.result');
+            const initialPlaceholder = document.getElementById('initial-placeholder');
             
-            statusDiv.textContent = message;
-            statusDiv.style.display = 'block';
-            console.log('显示生成状态:', message);
+            if (resultSection) {
+                // 清空结果区域并显示状态
+                resultSection.innerHTML = `
+                    <div class="generation-status-inline">
+                        <div class="status-spinner"></div>
+                        <p>${message}</p>
+                    </div>
+                `;
+                resultSection.style.display = 'block';
+                resultSection.classList.add('show');
+                console.log('在结果区域显示生成状态:', message);
+            } else if (initialPlaceholder) {
+                // 如果没有结果区域，在占位符区域显示
+                initialPlaceholder.innerHTML = `
+                    <div class="generation-status-inline">
+                        <div class="status-spinner"></div>
+                        <p>${message}</p>
+                    </div>
+                `;
+                initialPlaceholder.style.display = 'block';
+                console.log('在占位符区域显示生成状态:', message);
+            }
         }
         
         // 隐藏生成状态提示
         function hideGenerationStatus() {
-            const statusDiv = document.getElementById('generation-status');
-            if (statusDiv) {
-                statusDiv.style.display = 'none';
-                console.log('隐藏生成状态提示');
-            }
+            // 状态提示会在showResult或hideResult中自动处理
+            // 这里只需要记录日志
+            console.log('隐藏生成状态提示');
         }
         
 
