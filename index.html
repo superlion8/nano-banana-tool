@@ -1060,6 +1060,7 @@
                             </select>
                             <input type="text" id="history-search" placeholder="搜索提示词..." oninput="searchHistory()">
                             <button class="clear-all-history-btn" onclick="clearAllHistory()" style="margin-left: 10px; padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">清空所有</button>
+                            <button id="load-more-history" onclick="loadMoreHistory()" style="margin-left: 10px; padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; display: none;">加载更多</button>
                         </div>
                     </div>
                     <div id="history-list" class="history-list">
@@ -1790,17 +1791,18 @@
         }
         
         // 后台加载Supabase数据，不阻塞UI
-        async function loadHistoryFromSupabaseBackground() {
+        async function loadHistoryFromSupabaseBackground(page = 1, pageSize = 20) {
             // 显示后台同步状态
             showHistorySyncStatus();
             
             try {
+                // 优化查询：只选择必要字段，不包含图片数据
                 const { data, error } = await supabase
                     .from('history')
-                    .select('*')
+                    .select('id, type, prompt, created_at, input_images')
                     .eq('user_id', currentUser.id)
                     .order('created_at', { ascending: false })
-                    .limit(50); // 限制加载数量，提升性能
+                    .range((page - 1) * pageSize, page * pageSize - 1); // 使用分页
                 
                 if (error) {
                     console.error('Supabase加载失败:', error);
@@ -1809,33 +1811,143 @@
                 }
                 
                 if (data && data.length > 0) {
-                    // 转换数据格式
+                    // 转换数据格式，不包含图片数据（延迟加载）
                     const newHistory = data.map(item => ({
                         id: String(item.id),
                         type: item.type,
                         prompt: item.prompt,
-                        resultImage: item.result_image,
+                        resultImage: null, // 延迟加载图片
                         inputImages: item.input_images || [],
-                        createdAt: item.created_at
+                        createdAt: item.created_at,
+                        imageLoaded: false // 标记图片是否已加载
                     }));
                     
-                    // 更新本地数据
-                    userHistory = newHistory;
-                    saveUserHistoryToStorage();
-                    
-                    // 重新渲染（如果用户当前在History页面）
-                    const historyTab = document.querySelector('.main-tab-button[onclick*="history"]');
-                    if (historyTab && historyTab.classList.contains('active')) {
-                        renderHistory();
-                        console.log('后台同步：Supabase数据已更新，共', userHistory.length, '条');
+                    // 如果是第一页，直接替换；否则返回数据供调用者处理
+                    if (page === 1) {
+                        userHistory = newHistory;
+                        saveUserHistoryToStorage();
+                        
+                        // 重新渲染（如果用户当前在History页面）
+                        const historyTab = document.querySelector('.main-tab-button[onclick*="history"]');
+                        if (historyTab && historyTab.classList.contains('active')) {
+                            renderHistory();
+                            console.log('后台同步：Supabase数据已更新，共', userHistory.length, '条');
+                            
+                            // 延迟加载图片（分批加载，不阻塞UI）
+                            setTimeout(() => loadHistoryImages(newHistory), 100);
+                        }
                     }
+                    
+                    // 显示"加载更多"按钮
+                    const loadMoreBtn = document.getElementById('load-more-history');
+                    if (loadMoreBtn && data.length === 20) {
+                        loadMoreBtn.style.display = 'inline-block';
+                    }
+                    
+                    return newHistory;
                 }
+                
+                return [];
                 
                 hideHistorySyncStatus();
             } catch (error) {
                 console.error('后台同步失败:', error);
                 hideHistorySyncStatus();
             }
+        }
+        
+        // 分页加载更多历史记录
+        let currentHistoryPage = 1;
+        let hasMoreHistory = true;
+        
+        async function loadMoreHistory() {
+            if (!hasMoreHistory || !currentUser) return;
+            
+            const loadMoreBtn = document.getElementById('load-more-history');
+            if (loadMoreBtn) {
+                loadMoreBtn.textContent = '加载中...';
+                loadMoreBtn.disabled = true;
+            }
+            
+            try {
+                currentHistoryPage++;
+                const newData = await loadHistoryFromSupabaseBackground(currentHistoryPage, 20);
+                
+                if (newData && newData.length > 0) {
+                    // 追加新数据到现有历史记录
+                    userHistory = [...userHistory, ...newData];
+                    saveUserHistoryToStorage();
+                    renderHistory();
+                    
+                    // 延迟加载新数据的图片
+                    setTimeout(() => loadHistoryImages(newData), 100);
+                    
+                    console.log('加载更多历史记录成功，当前共', userHistory.length, '条');
+                } else {
+                    hasMoreHistory = false;
+                    if (loadMoreBtn) {
+                        loadMoreBtn.style.display = 'none';
+                    }
+                }
+            } catch (error) {
+                console.error('加载更多历史记录失败:', error);
+                currentHistoryPage--; // 回退页码
+            } finally {
+                if (loadMoreBtn) {
+                    loadMoreBtn.textContent = '加载更多';
+                    loadMoreBtn.disabled = false;
+                }
+            }
+        }
+        
+        // 延迟加载历史记录图片（分批加载，提升性能）
+        async function loadHistoryImages(historyItems) {
+            if (!historyItems || historyItems.length === 0) return;
+            
+            console.log('开始延迟加载图片，共', historyItems.length, '条记录');
+            
+            // 分批加载，每批5个，避免同时发起太多请求
+            const batchSize = 5;
+            for (let i = 0; i < historyItems.length; i += batchSize) {
+                const batch = historyItems.slice(i, i + batchSize);
+                
+                // 并行加载当前批次的图片
+                const promises = batch.map(async (item) => {
+                    if (item.imageLoaded || item.resultImage) return;
+                    
+                    try {
+                        // 只加载图片数据
+                        const { data, error } = await supabase
+                            .from('history')
+                            .select('result_image')
+                            .eq('id', item.id)
+                            .single();
+                        
+                        if (!error && data && data.result_image) {
+                            item.resultImage = data.result_image;
+                            item.imageLoaded = true;
+                            
+                            // 更新对应的DOM元素
+                            const imgElement = document.querySelector(`[data-history-id="${item.id}"] img`);
+                            if (imgElement) {
+                                imgElement.src = `data:image/png;base64,${data.result_image}`;
+                            }
+                        }
+                    } catch (error) {
+                        console.warn('加载图片失败:', item.id, error);
+                    }
+                });
+                
+                // 等待当前批次完成
+                await Promise.all(promises);
+                
+                // 批次间延迟，避免阻塞UI
+                if (i + batchSize < historyItems.length) {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
+            }
+            
+            console.log('图片延迟加载完成');
         }
         
         // 显示历史记录同步状态
@@ -2609,9 +2721,10 @@
                 
                 const { data, error } = await supabase
                     .from('history')
-                    .select('*')
+                    .select('id, type, prompt, created_at, input_images')
                     .eq('user_id', currentUser.id)
-                    .order('created_at', { ascending: false });
+                    .order('created_at', { ascending: false })
+                    .limit(50); // 限制加载数量，提升性能
                 
                 if (error) {
                     console.error('从Supabase加载历史记录失败:', error);
