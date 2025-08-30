@@ -347,6 +347,37 @@
             margin-top: 15px;
         }
 
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 8px;
+        }
+
+        .image-count {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .clear-all-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .clear-all-btn:hover {
+            background: #c82333;
+            transform: translateY(-1px);
+        }
+
         #multi-preview-images {
             display: flex;
             flex-wrap: wrap;
@@ -386,6 +417,16 @@
 
         .remove-image-btn:hover {
             background: #c82333;
+        }
+
+        .upload-hint {
+            margin-top: 8px;
+            color: #666;
+            font-size: 12px;
+        }
+
+        .upload-hint small {
+            color: #888;
         }
 
         @media (max-width: 768px) {
@@ -467,14 +508,21 @@
                 <textarea id="multi-prompt" placeholder="请输入您想要基于多张图像生成新图像的详细描述，例如：Create a professional e-commerce fashion photo. Take the blue floral dress from the first image and let the woman from the second image wear it. Generate a realistic, full-body shot of the woman wearing the dress, with the lighting and shadows adjusted to match the outdoor environment."></textarea>
             </div>
             <div class="input-group">
-                <label for="multi-images">选择图像 (最多3张)</label>
+                <label for="multi-images">添加图像 (最多3张)</label>
                 <div class="multi-file-input-wrapper">
-                    <input type="file" id="multi-images" accept="image/*" multiple onchange="previewMultiImages(this)">
+                    <input type="file" id="multi-images" accept="image/*" onchange="addSingleImage(this)">
                     <div class="multi-file-input-display">
-                        <span id="multi-file-display-text">点击选择1-3张图像文件或拖拽到此处</span>
+                        <span id="multi-file-display-text">点击选择图像文件或拖拽到此处</span>
                     </div>
                 </div>
+                <div class="upload-hint">
+                    <small>支持JPEG、PNG格式，单张图像最大10MB</small>
+                </div>
                 <div id="multi-image-preview" class="multi-preview-container" style="display: none;">
+                    <div class="preview-header">
+                        <span class="image-count">已添加 <span id="image-count">0</span> 张图像</span>
+                        <button class="clear-all-btn" onclick="clearAllImages()" title="清空所有图像">🗑️ 清空</button>
+                    </div>
                     <div id="multi-preview-images"></div>
                 </div>
             </div>
@@ -545,6 +593,12 @@
             hideResult();
             hideError();
             hideDebugInfo();
+            
+            // 清空多图选择
+            if (tabId !== 'multi-image') {
+                selectedMultiFiles = [];
+                updateMultiImagePreview();
+            }
         }
 
         // 预览选择的图像
@@ -889,94 +943,130 @@
         // 多图上传相关变量
         let selectedMultiFiles = [];
 
-        // 预览多张图像
-        function previewMultiImages(input) {
-            const files = Array.from(input.files);
+        // 添加单张图像
+        function addSingleImage(input) {
+            const file = input.files[0];
             
-            if (files.length > 3) {
-                alert('最多只能选择3张图像');
-                input.value = '';
+            if (!file) {
                 return;
             }
             
             // 验证文件格式
-            for (const file of files) {
-                if (!file.type.startsWith('image/')) {
-                    alert(`文件 ${file.name} 不是有效的图像文件`);
-                    input.value = '';
-                    return;
-                }
-                
-                // 只允许JPEG和PNG格式
-                if (file.type !== 'image/jpeg' && file.type !== 'image/jpg' && file.type !== 'image/png') {
-                    alert(`文件 ${file.name} 格式不支持。请使用JPEG或PNG格式。`);
-                    input.value = '';
-                    return;
-                }
-                
-                // 检查文件大小（限制为10MB）
-                if (file.size > 10 * 1024 * 1024) {
-                    alert(`文件 ${file.name} 太大。请选择小于10MB的图像。`);
-                    input.value = '';
-                    return;
-                }
+            if (!file.type.startsWith('image/')) {
+                alert(`文件 ${file.name} 不是有效的图像文件`);
+                input.value = '';
+                return;
             }
             
-            selectedMultiFiles = files;
+            // 只允许JPEG和PNG格式
+            if (file.type !== 'image/jpeg' && file.type !== 'image/jpg' && file.type !== 'image/png') {
+                alert(`文件 ${file.name} 格式不支持。请使用JPEG或PNG格式。`);
+                input.value = '';
+                return;
+            }
+            
+            // 检查文件大小（限制为10MB）
+            if (file.size > 10 * 1024 * 1024) {
+                alert(`文件 ${file.name} 太大。请选择小于10MB的图像。`);
+                input.value = '';
+                return;
+            }
+            
+            // 检查是否已达到最大数量
+            if (selectedMultiFiles.length >= 3) {
+                alert('已达到最大图像数量限制（3张）');
+                input.value = '';
+                return;
+            }
+            
+            // 检查是否已存在同名文件
+            const existingFile = selectedMultiFiles.find(f => f.name === file.name);
+            if (existingFile) {
+                alert(`文件 ${file.name} 已存在，请选择其他文件`);
+                input.value = '';
+                return;
+            }
+            
+            // 添加文件到数组
+            selectedMultiFiles.push(file);
+            
+            // 更新预览
+            updateMultiImagePreview();
+            
+            // 清空input值，允许重复选择同一文件
+            input.value = '';
+        }
+
+        // 更新多图预览
+        function updateMultiImagePreview() {
             const previewContainer = document.getElementById('multi-image-preview');
             const previewImages = document.getElementById('multi-preview-images');
             const fileDisplay = document.querySelector('.multi-file-input-display');
             const fileDisplayText = document.getElementById('multi-file-display-text');
+            const imageCount = document.getElementById('image-count');
+            
+            // 更新图像计数
+            if (imageCount) {
+                imageCount.textContent = selectedMultiFiles.length;
+            }
             
             // 清空预览区域
             previewImages.innerHTML = '';
             
-            if (files.length > 0) {
+            if (selectedMultiFiles.length > 0) {
                 previewContainer.style.display = 'block';
                 fileDisplay.classList.add('has-files');
-                fileDisplayText.textContent = `已选择 ${files.length} 张图像`;
+                fileDisplayText.textContent = `已添加 ${selectedMultiFiles.length} 张图像`;
                 
-                files.forEach((file, index) => {
-                    if (file.type.startsWith('image/')) {
-                        const reader = new FileReader();
-                        reader.onload = function(e) {
-                            const previewItem = document.createElement('div');
-                            previewItem.className = 'multi-preview-item';
-                            
-                            const img = document.createElement('img');
-                            img.src = e.target.result;
-                            img.className = 'multi-preview-image';
-                            img.alt = `预览图像 ${index + 1}`;
-                            
-                            const removeBtn = document.createElement('button');
-                            removeBtn.className = 'remove-image-btn';
-                            removeBtn.innerHTML = '×';
-                            removeBtn.onclick = function() {
-                                removeMultiImage(index);
-                            };
-                            
-                            previewItem.appendChild(img);
-                            previewItem.appendChild(removeBtn);
-                            previewImages.appendChild(previewItem);
+                selectedMultiFiles.forEach((file, index) => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const previewItem = document.createElement('div');
+                        previewItem.className = 'multi-preview-item';
+                        
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.className = 'multi-preview-image';
+                        img.alt = `预览图像 ${index + 1}`;
+                        
+                        const removeBtn = document.createElement('button');
+                        removeBtn.className = 'remove-image-btn';
+                        removeBtn.innerHTML = '×';
+                        removeBtn.onclick = function() {
+                            removeMultiImage(index);
                         };
-                        reader.readAsDataURL(file);
-                    }
+                        
+                        previewItem.appendChild(img);
+                        previewItem.appendChild(removeBtn);
+                        previewImages.appendChild(previewItem);
+                    };
+                    reader.readAsDataURL(file);
                 });
             } else {
                 previewContainer.style.display = 'none';
                 fileDisplay.classList.remove('has-files');
-                fileDisplayText.textContent = '点击选择1-3张图像文件或拖拽到此处';
+                fileDisplayText.textContent = '点击选择图像文件或拖拽到此处';
             }
         }
 
         // 移除多图中的某张图像
         function removeMultiImage(index) {
             selectedMultiFiles.splice(index, 1);
-            const input = document.getElementById('multi-images');
-            input.value = '';
             
-            // 重新预览剩余图像
-            previewMultiImages(input);
+            // 更新预览
+            updateMultiImagePreview();
+        }
+
+        // 清空所有图像
+        function clearAllImages() {
+            if (selectedMultiFiles.length === 0) {
+                return;
+            }
+            
+            if (confirm(`确定要清空所有 ${selectedMultiFiles.length} 张图像吗？`)) {
+                selectedMultiFiles = [];
+                updateMultiImagePreview();
+            }
         }
 
         // 从多图生成图像
@@ -1118,35 +1208,40 @@
                     
                     const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
                     
-                    if (files.length > 3) {
-                        alert('最多只能拖拽3张图像');
-                        return;
-                    }
-                    
                     if (files.length > 0) {
-                        // 验证文件格式和大小
+                        // 逐个处理拖拽的文件
                         for (const file of files) {
-                            if (file.type !== 'image/jpeg' && file.type !== 'image/jpg' && file.type !== 'image/png') {
-                                alert(`文件 ${file.name} 格式不支持。请使用JPEG或PNG格式。`);
-                                return;
+                            // 检查是否已达到最大数量
+                            if (selectedMultiFiles.length >= 3) {
+                                alert('已达到最大图像数量限制（3张）');
+                                break;
                             }
                             
+                            // 验证文件格式
+                            if (file.type !== 'image/jpeg' && file.type !== 'image/jpg' && file.type !== 'image/png') {
+                                alert(`文件 ${file.name} 格式不支持。请使用JPEG或PNG格式。`);
+                                continue;
+                            }
+                            
+                            // 检查文件大小
                             if (file.size > 10 * 1024 * 1024) {
                                 alert(`文件 ${file.name} 太大。请选择小于10MB的图像。`);
-                                return;
+                                continue;
                             }
+                            
+                            // 检查是否已存在同名文件
+                            const existingFile = selectedMultiFiles.find(f => f.name === file.name);
+                            if (existingFile) {
+                                alert(`文件 ${file.name} 已存在，跳过`);
+                                continue;
+                            }
+                            
+                            // 添加文件到数组
+                            selectedMultiFiles.push(file);
                         }
                         
-                        selectedMultiFiles = files;
-                        const input = document.getElementById('multi-images');
-                        
-                        // 创建新的FileList对象
-                        const dt = new DataTransfer();
-                        files.forEach(file => dt.items.add(file));
-                        input.files = dt.files;
-                        
-                        // 预览图像
-                        previewMultiImages(input);
+                        // 更新预览
+                        updateMultiImagePreview();
                     }
                 });
             }
