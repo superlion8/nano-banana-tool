@@ -141,7 +141,7 @@
         }
 
         .editor-tab-button {
-            background: #f8f9fa;
+            background: none;
             border: none;
             padding: 10px 20px;
             font-size: 14px;
@@ -812,7 +812,6 @@
             border-radius: 10px;
             margin-bottom: 15px;
             border: 1px solid #e9ecef;
-            position: relative;
         }
 
         .history-item-image {
@@ -821,26 +820,6 @@
             border-radius: 8px;
             object-fit: cover;
             cursor: pointer;
-            transition: transform 0.2s ease;
-        }
-        
-        .history-item-image.loading {
-            opacity: 0.3;
-            cursor: default;
-        }
-        
-        .image-loading-placeholder {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #666;
-            font-size: 12px;
-            text-align: center;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 4px 8px;
-            border-radius: 4px;
-            white-space: nowrap;
         }
 
         .history-item-details {
@@ -911,6 +890,21 @@
         
         .history-delete-btn:hover {
             background: #c82333;
+        }
+        
+        .sync-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 10px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
         
         .history-count-info {
@@ -1081,7 +1075,6 @@
                             </select>
                             <input type="text" id="history-search" placeholder="搜索提示词..." oninput="searchHistory()">
                             <button class="clear-all-history-btn" onclick="clearAllHistory()" style="margin-left: 10px; padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">清空所有</button>
-                            <button id="load-more-history" onclick="loadMoreHistory()" style="margin-left: 10px; padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; display: none;">加载更多</button>
                         </div>
                     </div>
                     <div id="history-list" class="history-list">
@@ -1167,43 +1160,19 @@
         // 3. 创建以下数据表：
         //    - users: id, email, name, avatar_url, created_at
         //    - history: id, user_id, type, prompt, result_image, input_images, created_at
-        // Supabase配置将从环境变量中获取
-        let SUPABASE_URL = null;
-        let SUPABASE_ANON_KEY = null;
-        
-        // 从API获取配置信息
-        async function loadConfiguration() {
-            try {
-                const response = await fetch('/api/config');
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                const config = await response.json();
-                SUPABASE_URL = config.supabaseUrl;
-                SUPABASE_ANON_KEY = config.supabaseAnonKey;
-                
-                console.log('配置加载成功:', { 
-                    supabaseUrl: SUPABASE_URL ? '已设置' : '未设置',
-                    supabaseAnonKey: SUPABASE_ANON_KEY ? '已设置' : '未设置'
-                });
-                
-                // 初始化Supabase客户端
-                if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                    console.log('✅ Supabase客户端初始化成功');
-                } else {
-                    console.warn('⚠️ Supabase配置不完整，跳过初始化');
-                }
-                
-            } catch (error) {
-                console.error('❌ 配置加载失败:', error);
-                console.warn('⚠️ 将使用localStorage作为备选方案');
-            }
-        }
+        const SUPABASE_URL = 'https://cvdogeigbpussfamctsu.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2ZG9nZWlnYnB1c3NmYW1jdHN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY1NjEyMjUsImV4cCI6MjA3MjEzNzIyNX0.JSY1sEK1aLaqaIp5_MTM_99XERVaDY18akQeKCDYEik';
         
         // 初始化Supabase客户端
         let supabase = null;
+        try {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('✅ Supabase客户端已初始化');
+            console.log('Supabase URL:', SUPABASE_URL);
+        } catch (error) {
+            console.error('❌ Supabase客户端初始化失败:', error);
+            console.warn('⚠️ 将使用localStorage作为备选方案');
+        }
 
         // 切换主标签页（Editor/History）
         function switchMainTab(tabId, event) {
@@ -1296,7 +1265,7 @@
             }
         }
         
-                // Google登录相关函数
+        // Google登录相关函数
         function googleLogin() {
             // 检查是否已经登录
             if (currentUser) {
@@ -1312,19 +1281,6 @@
             }
             
             try {
-                // 检查浏览器兼容性
-                const userAgent = navigator.userAgent.toLowerCase();
-                const isChrome = userAgent.includes('chrome') && !userAgent.includes('edg') && !userAgent.includes('opera');
-                
-                if (!isChrome) {
-                    console.warn('检测到非Chrome浏览器，Google登录可能不稳定');
-                    // 显示浏览器兼容性提示，但允许用户尝试
-                    const shouldContinue = confirm('检测到非Chrome浏览器。Google登录在非Chrome浏览器中可能不稳定，是否仍要尝试？\n\n建议使用Chrome浏览器以获得最佳体验。');
-                    if (!shouldContinue) {
-                        return;
-                    }
-                }
-                
                 // 使用Google Sign-In API获取用户信息
                 // 这种方式可以直接获取用户的邮箱、姓名、头像等信息
                 
@@ -1371,7 +1327,7 @@
                          data-size="large"
                          data-logo_alignment="left">
                     </div>
-                    <button onclick="closeGoogleSignInModal()" style="margin-top: 20px; padding: 10px 20px; border: none; border-radius: 8px; background: #6c757d; color: white; cursor: pointer;">取消</button>        
+                    <button onclick="closeGoogleSignInModal()" style="margin-top: 20px; padding: 10px 20px; border: none; border-radius: 8px; background: #6c757d; color: white; cursor: pointer;">取消</button>
                 `;
                 
                 googleSignInButton.appendChild(signInContent);
@@ -1393,78 +1349,17 @@
                 return;
             }
             
-            // 检查浏览器兼容性
-            const userAgent = navigator.userAgent.toLowerCase();
-            const isChrome = userAgent.includes('chrome') && !userAgent.includes('edg') && !userAgent.includes('opera');
-            const isFirefox = userAgent.includes('firefox');
-            const isSafari = userAgent.includes('safari') && !userAgent.includes('chrome');
-            const isEdge = userAgent.includes('edg');
-            
-            console.log('浏览器检测:', { isChrome, isFirefox, isSafari, isEdge, userAgent });
-            
-            // 对于非Chrome浏览器，提供更详细的错误信息
-            if (!isChrome) {
-                console.warn('检测到非Chrome浏览器，Google登录可能不稳定');
-            }
-            
             const script = document.createElement('script');
             script.src = 'https://accounts.google.com/gsi/client';
             script.async = true;
             script.defer = true;
             script.onload = function() {
                 console.log('Google Sign-In API 加载完成');
-                
-                // 检查API是否正确加载
-                if (window.google && window.google.accounts) {
-                    console.log('Google Sign-In API 初始化成功');
-                } else {
-                    console.error('Google Sign-In API 加载后初始化失败');
-                    showError('Google登录服务初始化失败，请尝试刷新页面或使用Chrome浏览器');
-                }
             };
             script.onerror = function() {
                 console.error('Google Sign-In API 加载失败');
-                
-                let errorMessage = 'Google登录服务加载失败，请重试';
-                if (!isChrome) {
-                    errorMessage = 'Google登录服务加载失败。建议使用Chrome浏览器，或检查网络连接。';
-                }
-                
-                // 显示错误信息并添加重试按钮
-                showErrorWithRetry(errorMessage, () => {
-                    console.log('用户选择重试Google登录');
-                    // 移除旧的错误信息
-                    hideError();
-                    // 重新尝试登录
-                    setTimeout(() => googleLogin(), 1000);
-                });
+                showError('Google登录服务加载失败，请重试');
             };
-            
-            // 设置超时处理
-            const timeout = setTimeout(() => {
-                if (!window.google || !window.google.accounts) {
-                    console.error('Google Sign-In API 加载超时');
-                    let errorMessage = 'Google登录服务加载超时，请重试';
-                    if (!isChrome) {
-                        errorMessage = 'Google登录服务加载超时。建议使用Chrome浏览器，或检查网络连接。';
-                    }
-                    showError(errorMessage);
-                }
-            }, 10000); // 10秒超时
-            
-            script.onload = function() {
-                clearTimeout(timeout);
-                console.log('Google Sign-In API 加载完成');
-                
-                // 检查API是否正确加载
-                if (window.google && window.google.accounts) {
-                    console.log('Google Sign-In API 初始化成功');
-                } else {
-                    console.error('Google Sign-In API 加载后初始化失败');
-                    showError('Google登录服务初始化失败，请尝试刷新页面或使用Chrome浏览器');
-                }
-            };
-            
             document.head.appendChild(script);
         }
         
@@ -1786,6 +1681,9 @@
                     email: currentUser.email,
                     avatar: avatarUrl
                 });
+                
+                // 登录成功后自动加载历史记录
+                loadUserHistory();
             } else {
                 loginSection.style.display = 'block';
                 userInfo.style.display = 'none';
@@ -1798,6 +1696,9 @@
                 return;
             }
             
+            // 设置同步状态
+            window.isHistorySyncing = true;
+            
             // 先尝试从localStorage快速加载（用户体验优先）
             const hasLocalHistory = loadUserHistoryFromStorage();
             if (hasLocalHistory && userHistory.length > 0) {
@@ -1807,23 +1708,28 @@
             
             // 后台从Supabase同步最新数据（不阻塞UI）
             if (supabase) {
-                loadHistoryFromSupabaseBackground();
+                await loadHistoryFromSupabaseBackground();
             }
+            
+            // 同步完成，清除状态
+            window.isHistorySyncing = false;
+            
+            // 重新渲染以显示最终结果
+            renderHistory();
         }
         
         // 后台加载Supabase数据，不阻塞UI
-        async function loadHistoryFromSupabaseBackground(page = 1, pageSize = 20) {
+        async function loadHistoryFromSupabaseBackground() {
             // 显示后台同步状态
             showHistorySyncStatus();
             
             try {
-                // 查询包含图片数据的完整记录
                 const { data, error } = await supabase
                     .from('history')
-                    .select('id, type, prompt, created_at, input_images, result_image')
+                    .select('*')
                     .eq('user_id', currentUser.id)
                     .order('created_at', { ascending: false })
-                    .range((page - 1) * pageSize, page * pageSize - 1); // 使用分页
+                    .limit(50); // 限制加载数量，提升性能
                 
                 if (error) {
                     console.error('Supabase加载失败:', error);
@@ -1832,168 +1738,33 @@
                 }
                 
                 if (data && data.length > 0) {
-                    // 转换数据格式，包含图片数据
+                    // 转换数据格式
                     const newHistory = data.map(item => ({
                         id: String(item.id),
                         type: item.type,
                         prompt: item.prompt,
-                        resultImage: item.result_image || null, // 直接使用Supabase中的图片数据
+                        resultImage: item.result_image,
                         inputImages: item.input_images || [],
                         createdAt: item.created_at
                     }));
                     
-                    // 如果是第一页，直接替换；否则返回数据供调用者处理
-                    if (page === 1) {
-                        userHistory = newHistory;
-                        saveUserHistoryToStorage();
-                        
-                        // 重新渲染（如果用户当前在History页面）
-                        const historyTab = document.querySelector('.main-tab-button[onclick*="history"]');
-                        if (historyTab && historyTab.classList.contains('active')) {
-                            renderHistory();
-                            console.log('后台同步：Supabase数据已更新，共', userHistory.length, '条');
-                        }
-                    }
+                    // 更新本地数据
+                    userHistory = newHistory;
+                    saveUserHistoryToStorage();
                     
-                    // 显示"加载更多"按钮
-                    const loadMoreBtn = document.getElementById('load-more-history');
-                    if (loadMoreBtn && data.length === 20) {
-                        loadMoreBtn.style.display = 'inline-block';
+                    // 重新渲染（如果用户当前在History页面）
+                    const historyTab = document.querySelector('.main-tab-button[onclick*="history"]');
+                    if (historyTab && historyTab.classList.contains('active')) {
+                        renderHistory();
+                        console.log('后台同步：Supabase数据已更新，共', userHistory.length, '条');
                     }
-                    
-                    return newHistory;
                 }
-                
-                return [];
                 
                 hideHistorySyncStatus();
             } catch (error) {
                 console.error('后台同步失败:', error);
                 hideHistorySyncStatus();
             }
-        }
-        
-        // 分页加载更多历史记录
-        let currentHistoryPage = 1;
-        let hasMoreHistory = true;
-        
-        async function loadMoreHistory() {
-            if (!hasMoreHistory || !currentUser) return;
-            
-            const loadMoreBtn = document.getElementById('load-more-history');
-            if (loadMoreBtn) {
-                loadMoreBtn.textContent = '加载中...';
-                loadMoreBtn.disabled = true;
-            }
-            
-            try {
-                currentHistoryPage++;
-                const newData = await loadHistoryFromSupabaseBackground(currentHistoryPage, 20);
-                
-                if (newData && newData.length > 0) {
-                    // 追加新数据到现有历史记录
-                    userHistory = [...userHistory, ...newData];
-                    saveUserHistoryToStorage();
-                    renderHistory();
-                    
-                    // 延迟加载新数据的图片
-                    setTimeout(() => loadHistoryImages(newData), 100);
-                    
-                    console.log('加载更多历史记录成功，当前共', userHistory.length, '条');
-                } else {
-                    hasMoreHistory = false;
-                    if (loadMoreBtn) {
-                        loadMoreBtn.style.display = 'none';
-                    }
-                }
-            } catch (error) {
-                console.error('加载更多历史记录失败:', error);
-                currentHistoryPage--; // 回退页码
-            } finally {
-                if (loadMoreBtn) {
-                    loadMoreBtn.textContent = '加载更多';
-                    loadMoreBtn.disabled = false;
-                }
-            }
-        }
-        
-        // 延迟加载历史记录图片（分批加载，提升性能）
-        async function loadHistoryImages(historyItems) {
-            if (!historyItems || historyItems.length === 0) return;
-            
-            console.log('开始延迟加载图片，共', historyItems.length, '条记录');
-            
-            // 分批加载，每批5个，避免同时发起太多请求
-            const batchSize = 5;
-            for (let i = 0; i < historyItems.length; i += batchSize) {
-                const batch = historyItems.slice(i, i + batchSize);
-                
-                // 并行加载当前批次的图片
-                const promises = batch.map(async (item) => {
-                    if (item.imageLoaded || item.resultImage) return;
-                    
-                    try {
-                        // 只加载图片数据
-                        const { data, error } = await supabase
-                            .from('history')
-                            .select('result_image')
-                            .eq('id', item.id)
-                            .single();
-                        
-                        if (!error && data && data.result_image) {
-                            item.resultImage = data.result_image;
-                            item.imageLoaded = true;
-                            
-                            // 更新对应的DOM元素
-                            const historyItem = document.querySelector(`[data-history-id="${item.id}"]`);
-                            if (historyItem) {
-                                const imgElement = historyItem.querySelector('img');
-                                if (imgElement) {
-                                    // 更新图片源
-                                    imgElement.src = `data:image/png;base64,${data.result_image}`;
-                                    imgElement.className = 'history-item-image';
-                                    
-                                    // 添加点击事件
-                                    imgElement.onclick = () => showImageModal(`data:image/png;base64,${data.result_image}`);
-                                    
-                                    // 移除加载占位符
-                                    const placeholder = historyItem.querySelector('.image-loading-placeholder');
-                                    if (placeholder) {
-                                        placeholder.remove();
-                                    }
-                                    
-                                    // 启用下载按钮
-                                    const downloadBtn = historyItem.querySelector('.history-download-btn');
-                                    if (downloadBtn) {
-                                        downloadBtn.disabled = false;
-                                        downloadBtn.onclick = () => downloadHistoryImage(`data:image/png;base64,${data.result_image}`);
-                                    }
-                                }
-                            }
-                            
-                            // 更新localStorage中的数据
-                            const existingIndex = userHistory.findIndex(existing => existing.id === item.id);
-                            if (existingIndex !== -1) {
-                                userHistory[existingIndex].resultImage = item.resultImage;
-                                userHistory[existingIndex].imageLoaded = true;
-                                saveUserHistoryToStorage();
-                            }
-                        }
-                    } catch (error) {
-                        console.warn('加载图片失败:', item.id, error);
-                    }
-                });
-                
-                // 等待当前批次完成
-                await Promise.all(promises);
-                
-                // 批次间延迟，避免阻塞UI
-                if (i + batchSize < historyItems.length) {
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                }
-            }
-            
-            console.log('图片延迟加载完成');
         }
         
         // 显示历史记录同步状态
@@ -2037,23 +1808,15 @@
             }
             
             const historyHTML = historyData.map(item => {
-                // 检查图片数据
-                const hasImage = item.resultImage && item.resultImage !== 'null' && item.resultImage !== '';
-                const imageSrc = hasImage ? item.resultImage : '';
-                const imageClass = hasImage ? 'history-item-image' : 'history-item-image loading';
-                const clickHandler = hasImage ? `onclick="showImageModal('${imageSrc}')"` : '';
-                const downloadHandler = hasImage ? `onclick="downloadHistoryImage('${imageSrc}')"` : '';
-                
                 return `
-                <div class="history-item" data-history-id="${item.id}">
-                    <img src="${imageSrc}" alt="生成结果" class="${imageClass}" ${clickHandler}>
-                    ${!hasImage ? '<div class="image-loading-placeholder">暂无图片</div>' : ''}
+                <div class="history-item">
+                    <img src="${item.resultImage}" alt="生成结果" class="history-item-image" onclick="showImageModal('${item.resultImage}')">
                     <div class="history-item-details">
                         <span class="history-item-type">${item.type === 'text-to-image' ? '文本生成图像' : '图像编辑'}</span>
                         <div class="history-item-prompt">${item.prompt}</div>
                         <div class="history-item-date">${new Date(item.createdAt).toLocaleString()}</div>
                         <div class="history-item-actions">
-                            <button class="history-action-btn history-download-btn" ${downloadHandler} ${!hasImage ? 'disabled' : ''}>下载</button>
+                            <button class="history-action-btn history-download-btn" onclick="downloadHistoryImage('${item.resultImage}')">下载</button>
                             <button class="history-action-btn history-reference-btn" onclick="referenceHistoryImage('${item.id}')">引用</button>
                             <button class="history-action-btn history-delete-btn" onclick="deleteHistoryItem('${item.id}')" title="删除此记录">🗑️</button>
                         </div>
@@ -2454,9 +2217,6 @@
             console.log('Page loaded successfully');
             console.log('Available functions:', typeof switchTab, typeof generateFromText);
             
-            // 加载配置信息
-            loadConfiguration();
-            
             // 检查Google OAuth配置
             if (GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
                 console.warn('⚠️ Google OAuth Client ID 未配置！');
@@ -2583,41 +2343,6 @@
             document.getElementById('error-message').textContent = message;
             document.querySelector('.error').classList.add('show');
         }
-        
-        // 显示带重试按钮的错误信息
-        function showErrorWithRetry(message, retryCallback) {
-            const errorDiv = document.querySelector('.error');
-            const errorMessage = document.getElementById('error-message');
-            
-            // 创建错误信息HTML，包含重试按钮
-            errorMessage.innerHTML = `
-                <div style="margin-bottom: 15px;">${message}</div>
-                <button onclick="retryGoogleLogin()" style="
-                    padding: 8px 16px; 
-                    background: #007bff; 
-                    color: white; 
-                    border: none; 
-                    border-radius: 4px; 
-                    cursor: pointer; 
-                    font-size: 14px;
-                    margin-right: 10px;
-                ">重试</button>
-                <button onclick="hideError()" style="
-                    padding: 8px 16px; 
-                    background: #6c757d; 
-                    color: white; 
-                    border: none; 
-                    border-radius: 4px; 
-                    cursor: pointer; 
-                    font-size: 14px;
-                ">关闭</button>
-            `;
-            
-            // 存储重试回调函数
-            window.retryGoogleLogin = retryCallback;
-            
-            errorDiv.classList.add('show');
-        }
 
         // 显示加载消息
         function showLoadingMessage(message) {
@@ -2679,22 +2404,9 @@
         
         // 隐藏生成状态提示
         function hideGenerationStatus() {
-            const resultSection = document.querySelector('.result');
-            const initialPlaceholder = document.getElementById('initial-placeholder');
-            
-            if (resultSection) {
-                // 清空结果区域
-                resultSection.innerHTML = '';
-                resultSection.style.display = 'none';
-                resultSection.classList.remove('show');
-            }
-            
-            // 恢复占位符显示
-            if (initialPlaceholder) {
-                initialPlaceholder.style.display = 'block';
-            }
-            
-            console.log('已清除生成状态提示');
+            // 状态提示会在showResult或hideResult中自动处理
+            // 这里只需要记录日志
+            console.log('隐藏生成状态提示');
         }
         
 
@@ -2775,10 +2487,9 @@
                 
                 const { data, error } = await supabase
                     .from('history')
-                    .select('id, type, prompt, created_at, input_images, result_image')
+                    .select('*')
                     .eq('user_id', currentUser.id)
-                    .order('created_at', { ascending: false })
-                    .limit(50); // 限制加载数量，提升性能
+                    .order('created_at', { ascending: false });
                 
                 if (error) {
                     console.error('从Supabase加载历史记录失败:', error);
