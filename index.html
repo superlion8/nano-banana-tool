@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nano Banana 图像生成工具</title>
     <style>
         * {
@@ -715,9 +715,9 @@
         <div class="main-layout">
             <div class="left-panel">
                 <div class="tabs">
-                    <button class="tab-button active" onclick="switchTab('text-to-image')">文本生成图像</button>
-                    <button class="tab-button" onclick="switchTab('image-edit')">图像修改</button>
-                    <button class="tab-button" onclick="switchTab('multi-image')">多图生成</button>
+                    <button class="tab-button active" onclick="switchTab('text-to-image', event)">文本生成图像</button>
+                    <button class="tab-button" onclick="switchTab('image-edit', event)">图像修改</button>
+                    <button class="tab-button" onclick="switchTab('multi-image', event)">多图生成</button>
                 </div>
 
         <!-- 文本生成图像 -->
@@ -842,48 +842,105 @@
     </div>
 
     <script>
+        console.log('Script starting...');
+        
         // API配置 - 现在通过本地服务器代理
         const API_BASE = window.location.origin; // 使用当前域名
         const MODEL = 'gemini-2.5-flash-image-preview';
         
         let currentImageData = null;
         let selectedFile = null;
+        let selectedMultiFiles = []; // 多图选择的文件数组
 
         // 切换标签页
-        function switchTab(tabId) {
-            // 隐藏所有标签内容
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
+        function switchTab(tabId, event) {
+            console.log('switchTab called with:', tabId, event);
             
-            // 移除所有按钮的active类
-            document.querySelectorAll('.tab-button').forEach(button => {
-                button.classList.remove('active');
-            });
-            
-            // 显示选中的标签内容
-            document.getElementById(tabId).classList.add('active');
-            
-            // 激活对应的按钮
-            event.target.classList.add('active');
-            
-            // 清除之前的结果和错误
-            hideResult();
-            hideError();
-            hideDebugInfo();
-            
-            // 隐藏成功消息
-            const successMessage = document.getElementById('success-message');
-            if (successMessage) {
-                successMessage.classList.remove('show');
-            }
-            
-            // 清空多图选择
-            if (tabId !== 'multi-image') {
-                selectedMultiFiles = [];
-                updateMultiImagePreview();
+            try {
+                // 隐藏所有标签内容
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                
+                // 移除所有按钮的active类
+                document.querySelectorAll('.tab-button').forEach(button => {
+                    button.classList.remove('active');
+                });
+                
+                // 显示选中的标签内容
+                const targetTab = document.getElementById(tabId);
+                if (targetTab) {
+                    targetTab.classList.add('active');
+                } else {
+                    console.error('Target tab not found:', tabId);
+                    return;
+                }
+                
+                // 激活对应的按钮
+                if (event && event.target) {
+                    event.target.classList.add('active');
+                }
+                
+                // 清除之前的结果和错误
+                hideResult();
+                hideError();
+                hideDebugInfo();
+                
+                // 隐藏成功消息
+                const successMessage = document.getElementById('success-message');
+                if (successMessage) {
+                    successMessage.classList.remove('show');
+                }
+                
+                // 清空多图选择
+                if (tabId !== 'multi-image') {
+                    selectedMultiFiles = [];
+                    updateMultiImagePreview();
+                }
+                
+                console.log('Tab switched successfully to:', tabId);
+            } catch (error) {
+                console.error('Error in switchTab:', error);
             }
         }
+        
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded successfully');
+            console.log('Available functions:', typeof switchTab, typeof generateFromText, typeof generateFromImage);
+            
+            // 测试基本功能
+            const testButton = document.createElement('button');
+            testButton.textContent = '测试按钮';
+            testButton.style.cssText = 'position:fixed;top:10px;right:10px;z-index:9999;padding:10px;background:red;color:white;border:none;border-radius:5px;';
+            testButton.onclick = function() {
+                alert('JavaScript 工作正常！');
+                console.log('Test button clicked');
+            };
+            document.body.appendChild(testButton);
+            
+            // 测试标签页切换功能
+            console.log('Testing tab switching functionality...');
+            const tabs = document.querySelectorAll('.tab-button');
+            tabs.forEach((tab, index) => {
+                console.log(`Tab ${index}:`, tab.textContent, 'onclick:', tab.onclick);
+                // 确保onclick事件正确绑定
+                if (!tab.onclick) {
+                    console.warn(`Tab ${index} has no onclick handler`);
+                }
+            });
+            
+            // 测试生成按钮
+            const generateButtons = document.querySelectorAll('.generate-btn');
+            generateButtons.forEach((btn, index) => {
+                console.log(`Generate button ${index}:`, btn.textContent, 'onclick:', btn.onclick);
+            });
+        });
+        
+        // 立即执行的测试
+        console.log('Script loaded, testing basic functionality...');
+        // 移除可能干扰的alert测试
+        console.log('JavaScript functions loaded successfully');
 
         // 预览选择的图像
         function previewImage(input) {
@@ -987,7 +1044,10 @@
         }
 
         function hideDebugInfo() {
-            document.getElementById('debug-info').style.display = 'none';
+            const debugInfo = document.getElementById('debug-info');
+            if (debugInfo) {
+                debugInfo.style.display = 'none';
+            }
         }
 
         // 显示图像放大模态框
@@ -1430,7 +1490,6 @@
         });
 
         // 多图上传相关变量
-        let selectedMultiFiles = [];
         let currentUploadMode = 'single'; // 'single' 或 'multiple'
 
         // 切换上传模式
@@ -1709,7 +1768,7 @@
                 `;
                 showDebugInfo(debugInfo);
                 
-                const response = await fetch('/api/generate-multi-image', {
+                const response = await fetch(`${API_BASE}/api/generate-multi-image`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -1778,7 +1837,6 @@
             });
 
             // 添加鼠标滚轮缩放功能
-            const imageModal = document.getElementById('image-modal');
             if (imageModal) {
                 imageModal.addEventListener('wheel', function(e) {
                     e.preventDefault();
