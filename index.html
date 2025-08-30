@@ -302,10 +302,41 @@
             border-radius: 0;
             text-align: center;
             display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
 
         .result.show {
             display: block;
+            opacity: 1;
+        }
+        
+        /* 内联生成状态提示样式 */
+        .generation-status-inline {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+        
+        .generation-status-inline p {
+            margin: 20px 0 0 0;
+            font-size: 16px;
+            color: #333;
+        }
+        
+        .status-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #764ba2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .result-image-container {
@@ -1524,36 +1555,48 @@
             const textPrompt = document.getElementById('text-prompt');
             if (textPrompt) {
                 textPrompt.value = '';
+                console.log('已清空文本提示词');
             }
             
             const multiPrompt = document.getElementById('multi-prompt');
             if (multiPrompt) {
-                textPrompt.value = '';
+                multiPrompt.value = '';
+                console.log('已清空多图提示词');
             }
             
             // 清空图像选择
             selectedFile = null;
             selectedMultiFiles = [];
             currentImageData = null;
+            console.log('已清空图像选择');
             
             // 清空图像预览
             const imagePreview = document.getElementById('image-preview');
             if (imagePreview) {
                 imagePreview.style.display = 'none';
                 imagePreview.innerHTML = '';
+                console.log('已清空单图预览');
             }
             
             const multiImagePreview = document.getElementById('multi-image-preview');
             if (multiImagePreview) {
                 multiImagePreview.style.display = 'none';
-                document.getElementById('multi-preview-images').innerHTML = '';
-                document.getElementById('image-count').textContent = '0';
+                const multiPreviewImages = document.getElementById('multi-preview-images');
+                if (multiPreviewImages) {
+                    multiPreviewImages.innerHTML = '';
+                }
+                const imageCount = document.getElementById('image-count');
+                if (imageCount) {
+                    imageCount.textContent = '0';
+                }
+                console.log('已清空多图预览');
             }
             
             // 清空结果显示
             const resultImage = document.getElementById('result-image');
             if (resultImage) {
                 resultImage.src = '';
+                console.log('已清空结果图像');
             }
             
             // 隐藏结果区域，显示初始占位符
@@ -1562,22 +1605,57 @@
             if (resultSection && initialPlaceholder) {
                 resultSection.style.display = 'none';
                 initialPlaceholder.style.display = 'block';
+                console.log('已显示初始占位符');
             }
             
             // 隐藏加载和错误状态
             const loadingSection = document.querySelector('.loading');
             const errorSection = document.querySelector('.error');
-            if (loadingSection) loadingSection.style.display = 'none';
-            if (errorSection) errorSection.style.display = 'none';
+            if (loadingSection) {
+                loadingSection.style.display = 'none';
+                console.log('已隐藏加载状态');
+            }
+            if (errorSection) {
+                errorSection.style.display = 'none';
+                console.log('已隐藏错误状态');
+            }
             
             // 重置文件输入
             const fileInput = document.getElementById('image-input');
-            if (fileInput) fileInput.value = '';
+            if (fileInput) {
+                fileInput.value = '';
+                console.log('已重置单图文件输入');
+            }
             
             const multiFileInput = document.getElementById('multi-images');
-            if (multiFileInput) multiFileInput.value = '';
+            if (multiFileInput) {
+                multiFileInput.value = '';
+                console.log('已重置多图文件输入');
+            }
             
-            console.log('界面数据清理完成');
+            // 强制刷新界面状态
+            setTimeout(() => {
+                // 确保所有状态都已更新
+                console.log('延迟检查界面状态...');
+                
+                // 再次检查关键元素状态
+                if (textPrompt && textPrompt.value !== '') {
+                    console.log('警告：文本提示词仍未清空，强制清空');
+                    textPrompt.value = '';
+                }
+                
+                if (multiPrompt && multiPrompt.value !== '') {
+                    console.log('警告：多图提示词仍未清空，强制清空');
+                    multiPrompt.value = '';
+                }
+                
+                if (selectedMultiFiles.length > 0) {
+                    console.log('警告：多图选择仍未清空，强制清空');
+                    selectedMultiFiles = [];
+                }
+                
+                console.log('界面数据清理完成');
+            }, 100);
         }
         
         function updateLoginUI() {
@@ -1787,7 +1865,7 @@
             // 清空当前选择
             selectedMultiFiles = [];
             
-            // 将结果图像作为输入图像添加到多图选择
+            // 只引用结果图像，不引用原始输入图像
             if (historyItem.resultImage) {
                 try {
                     // 将base64转换为File对象
@@ -1810,35 +1888,11 @@
                 }
             }
             
-            // 如果有原始输入图像，也添加到多图选择
-            if (historyItem.inputImages && historyItem.inputImages.length > 0) {
-                historyItem.inputImages.forEach((imageSrc, index) => {
-                    try {
-                        // 将base64转换为File对象
-                        const base64Data = imageSrc.split(',')[1];
-                        const byteCharacters = atob(base64Data);
-                        const byteNumbers = new Array(byteCharacters.length);
-                        for (let i = 0; i < byteNumbers.length; i++) {
-                            byteNumbers[i] = byteCharacters.charCodeAt(i);
-                        }
-                        const byteArray = new Uint8Array(byteNumbers);
-                        const blob = new Blob([byteArray], { type: 'image/png' });
-                        const file = new File([blob], `referenced_input_${index + 1}.png`, { type: 'image/png' });
-                        
-                        selectedMultiFiles.push(file);
-                        console.log('已添加输入图像:', file.name);
-                    } catch (error) {
-                        console.error('转换输入图像失败:', error);
-                    }
-                });
-            }
+            // 不再添加原始输入图像，只引用结果图像
+            console.log('引用策略：只引用结果图像，不引用原始输入图像');
             
-            // 设置提示词
-            const multiPrompt = document.getElementById('multi-prompt');
-            if (multiPrompt) {
-                multiPrompt.value = historyItem.prompt;
-                console.log('已设置提示词:', historyItem.prompt);
-            }
+            // 不填充提示词，让用户自己输入
+            console.log('引用策略：只引用图像，不填充提示词，用户需要自己输入');
             
             // 更新预览
             updateMultiImagePreview();
@@ -2278,6 +2332,43 @@
             }
         }
         
+        // 显示生成状态提示
+        function showGenerationStatus(message) {
+            // 在右侧生成区域显示状态提示
+            const resultSection = document.querySelector('.result');
+            const initialPlaceholder = document.getElementById('initial-placeholder');
+            
+            if (resultSection) {
+                // 清空结果区域并显示状态
+                resultSection.innerHTML = `
+                    <div class="generation-status-inline">
+                        <div class="status-spinner"></div>
+                        <p>${message}</p>
+                    </div>
+                `;
+                resultSection.style.display = 'block';
+                resultSection.classList.add('show');
+                console.log('在结果区域显示生成状态:', message);
+            } else if (initialPlaceholder) {
+                // 如果没有结果区域，在占位符区域显示
+                initialPlaceholder.innerHTML = `
+                    <div class="generation-status-inline">
+                        <div class="status-spinner"></div>
+                        <p>${message}</p>
+                    </div>
+                `;
+                initialPlaceholder.style.display = 'block';
+                console.log('在占位符区域显示生成状态:', message);
+            }
+        }
+        
+        // 隐藏生成状态提示
+        function hideGenerationStatus() {
+            // 状态提示会在showResult或hideResult中自动处理
+            // 这里只需要记录日志
+            console.log('隐藏生成状态提示');
+        }
+        
 
         
         // Supabase用户管理函数
@@ -2582,25 +2673,76 @@
 
         // 显示结果
         function showResult(imageData) {
-            currentImageData = imageData;
-            document.getElementById('result-image').src = `data:image/png;base64,${imageData}`;
-            document.querySelector('.result').classList.add('show');
+            console.log('showResult called with imageData:', imageData ? 'has data' : 'no data');
             
-            // 隐藏占位符
+            currentImageData = imageData;
+            
+            const resultDiv = document.querySelector('.result');
             const placeholder = document.getElementById('initial-placeholder');
+            
+            console.log('Elements found:', {
+                resultDiv: !!resultDiv,
+                placeholder: !!placeholder
+            });
+            
+            if (resultDiv) {
+                // 恢复结果区域的原始HTML内容
+                resultDiv.innerHTML = `
+                    <h3>生成结果</h3>
+                    <div class="result-image-container">
+                        <img id="result-image" src="data:image/png;base64,${imageData}" alt="生成的图像" onclick="showImageModal(this.src)" class="clickable-image">
+                        <div class="image-hint">点击图像可放大查看</div>
+                    </div>
+                    <div class="result-actions">
+                        <button class="download-btn" onclick="downloadImage()">下载图像</button>
+                        <button class="reference-btn" onclick="referenceImage()" title="引用此图像进行下一次编辑">📎 引用图像</button>
+                    </div>
+                `;
+                
+                resultDiv.classList.add('show');
+                console.log('已恢复结果区域HTML并添加show类');
+            } else {
+                console.error('未找到result div元素');
+            }
+            
             if (placeholder) {
                 placeholder.style.display = 'none';
+                console.log('已隐藏占位符');
+            } else {
+                console.error('未找到占位符元素');
             }
+            
+            console.log('showResult完成，当前状态:', {
+                resultDivDisplay: resultDiv ? resultDiv.style.display : 'N/A',
+                resultDivClasses: resultDiv ? resultDiv.className : 'N/A',
+                placeholderDisplay: placeholder ? placeholder.style.display : 'N/A'
+            });
         }
 
         // 隐藏结果
         function hideResult() {
-            document.querySelector('.result').classList.remove('show');
+            console.log('hideResult called');
             
-            // 显示占位符
+            const resultDiv = document.querySelector('.result');
             const placeholder = document.getElementById('initial-placeholder');
+            
+            console.log('Elements found:', {
+                resultDiv: !!resultDiv,
+                placeholder: !!placeholder
+            });
+            
+            if (resultDiv) {
+                resultDiv.classList.remove('show');
+                console.log('已移除show类从result div');
+            } else {
+                console.error('未找到result div元素');
+            }
+            
             if (placeholder) {
                 placeholder.style.display = 'block';
+                console.log('已显示占位符');
+            } else {
+                console.error('未找到占位符元素');
             }
         }
 
@@ -2684,6 +2826,13 @@
             
             // 清空当前多图选择
             selectedMultiFiles = [];
+            
+            // 清空提示词
+            const multiPrompt = document.getElementById('multi-prompt');
+            if (multiPrompt) {
+                multiPrompt.value = '';
+                console.log('已清空图像编辑提示词');
+            }
             
             // 将引用的图像添加到多图选择中
             addReferencedImageToMulti(currentImageData);
@@ -2843,6 +2992,9 @@
             hideError();
             hideResult();
             showLoading();
+            
+            // 显示生成状态提示
+            showGenerationStatus('正在生成图像');
 
             try {
                 const response = await fetch(`${API_BASE}/api/generate-image`, {
@@ -2892,6 +3044,7 @@
                 showError(`生成图像失败: ${error.message}`);
             } finally {
                 hideLoading();
+                hideGenerationStatus();
             }
         }
 
@@ -3126,6 +3279,9 @@
             hideError();
             hideResult();
             
+            // 显示生成状态提示
+            showGenerationStatus('正在生成图像');
+            
             try {
                 // 准备请求数据
                 const contents = [];
@@ -3208,6 +3364,7 @@
                 showError(`图像编辑失败: ${error.message}`);
             } finally {
                 hideLoading();
+                hideGenerationStatus();
             }
         }
 

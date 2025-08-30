@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            background: #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <h1>JavaScript 功能测试</h1>
+    
+    <div class="test-section">
+        <h2>基本功能测试</h2>
+        <button onclick="testBasicFunctions()">测试基本函数</button>
+        <button onclick="testTabSwitching()">测试标签页切换</button>
+        <button onclick="testFileHandling()">测试文件处理</button>
+        <div id="test-results" class="result"></div>
+    </div>
+
+    <script>
+        function log(message) {
+            const results = document.getElementById('test-results');
+            results.innerHTML += '<div>' + message + '</div>';
+            console.log(message);
+        }
+
+        function testBasicFunctions() {
+            log('开始测试基本函数...');
+            
+            // 测试函数是否存在
+            const functions = ['switchTab', 'generateFromText', 'generateFromImage', 'previewImage'];
+            functions.forEach(funcName => {
+                if (typeof window[funcName] === 'function') {
+                    log('✓ ' + funcName + ' 函数存在');
+                } else {
+                    log('✗ ' + funcName + ' 函数不存在');
+                }
+            });
+            
+            log('基本函数测试完成');
+        }
+
+        function testTabSwitching() {
+            log('开始测试标签页切换...');
+            
+            // 模拟标签页切换
+            try {
+                if (typeof switchTab === 'function') {
+                    log('✓ switchTab 函数可以调用');
+                    // 测试切换逻辑
+                    const tabs = document.querySelectorAll('.tab-button');
+                    if (tabs.length > 0) {
+                        log('✓ 找到标签页按钮: ' + tabs.length + ' 个');
+                    } else {
+                        log('✗ 未找到标签页按钮');
+                    }
+                } else {
+                    log('✗ switchTab 函数不存在');
+                }
+            } catch (error) {
+                log('✗ 标签页切换测试出错: ' + error.message);
+            }
+            
+            log('标签页切换测试完成');
+        }
+
+        function testFileHandling() {
+            log('开始测试文件处理...');
+            
+            // 测试文件处理相关函数
+            const fileFunctions = ['previewImage', 'fileToBase64', 'handleImageUpload'];
+            fileFunctions.forEach(funcName => {
+                if (typeof window[funcName] === 'function') {
+                    log('✓ ' + funcName + ' 函数存在');
+                } else {
+                    log('✗ ' + funcName + ' 函数不存在');
+                }
+            });
+            
+            log('文件处理测试完成');
+        }
+
+        // 页面加载完成后自动运行测试
+        window.addEventListener('load', function() {
+            log('页面加载完成，开始自动测试...');
+            setTimeout(() => {
+                testBasicFunctions();
+                testTabSwitching();
+                testFileHandling();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
