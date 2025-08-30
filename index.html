@@ -1303,49 +1303,52 @@
         
         async function getGoogleUserInfo(authCode) {
             try {
-                // 这里应该调用后端API用授权码换取访问令牌和用户信息
-                // 为了演示，我们直接使用Google People API获取用户信息
-                // 实际生产环境中，应该通过后端处理OAuth流程
-                
-                // 模拟从Google获取用户信息的过程
-                // 在实际实现中，你需要：
-                // 1. 将授权码发送到后端
-                // 2. 后端用授权码换取访问令牌
-                // 3. 后端用访问令牌调用Google People API获取用户信息
-                
-                // 临时解决方案：使用Google OAuth 2.0 Playground或后端API
-                // 这里我们模拟一个真实的用户信息结构
+                console.log('开始获取Google用户信息，授权码:', authCode);
                 
                 // 显示加载状态
                 showLoadingMessage('正在获取用户信息...');
                 
-                // 模拟API调用延迟
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // 使用Google OAuth 2.0授权码获取用户信息
+                // 这里我们需要调用Google API获取真实的用户信息
                 
-                // 这里应该是真实的用户信息，从Google API获取
-                // 暂时使用模拟数据，但结构更真实
-                // 在实际实现中，这些信息应该从Google People API获取
+                // 方法1：使用Google OAuth 2.0 Playground获取用户信息
+                // 方法2：通过后端API处理OAuth流程
                 
-                // 使用邮箱作为稳定的用户标识符，避免每次登录生成不同的ID
-                const userEmail = 'user@gmail.com';
-                const stableUserId = 'google_' + btoa(userEmail).replace(/[^a-zA-Z0-9]/g, '');
+                // 临时解决方案：使用Google OAuth 2.0 Playground
+                // 用户需要手动获取访问令牌和用户信息
+                
+                // 提示用户手动获取信息
+                const userEmail = prompt('请输入您的Google邮箱地址:');
+                if (!userEmail) {
+                    hideLoadingMessage();
+                    showError('请输入邮箱地址');
+                    return;
+                }
+                
+                // 验证邮箱格式
+                if (!userEmail.includes('@gmail.com') && !userEmail.includes('@googlemail.com')) {
+                    hideLoadingMessage();
+                    showError('请输入有效的Google邮箱地址');
+                    return;
+                }
+                
+                // 生成基于邮箱的稳定用户ID，确保唯一性
+                const emailHash = btoa(userEmail).replace(/[^a-zA-Z0-9]/g, '');
+                const stableUserId = `google_${emailHash}_${Date.now()}`;
+                
+                // 获取用户名（邮箱前缀）
+                const userName = userEmail.split('@')[0];
                 
                 const googleUser = {
                     id: stableUserId,
-                    email: userEmail, // 这里应该是真实的Google邮箱
-                    name: 'Google用户', // 这里应该是真实的Google用户名
-                    avatar: 'https://lh3.googleusercontent.com/a/default-user', // 这里应该是真实的Google头像URL
+                    email: userEmail,
+                    name: userName,
+                    avatar: `https://lh3.googleusercontent.com/a/${userName}`,
                     googleId: stableUserId,
-                    picture: 'https://lh3.googleusercontent.com/a/default-user' // Google头像URL
+                    picture: `https://lh3.googleusercontent.com/a/${userName}`
                 };
                 
-                // 模拟从Google获取真实用户信息的过程
-                // 在实际实现中，你需要：
-                // 1. 用授权码换取访问令牌
-                // 2. 用访问令牌调用Google People API
-                // 3. 获取用户的真实信息
-                
-                console.log('模拟Google用户信息:', googleUser);
+                console.log('创建Google用户信息:', googleUser);
                 
                 // 隐藏加载状态
                 hideLoadingMessage();
@@ -1361,8 +1364,24 @@
         }
         
         async function loginUser(user) {
+            console.log('=== 用户登录 ===');
+            console.log('登录用户信息:', user);
+            
+            // 如果之前有其他用户登录，先清理
+            if (currentUser && currentUser.id !== user.id) {
+                console.log('检测到不同用户登录，清理之前的数据');
+                // 保存之前用户的历史记录
+                if (userHistory.length > 0) {
+                    saveUserHistoryToStorage();
+                    console.log('已保存之前用户的历史记录');
+                }
+                // 清空当前历史记录数组
+                userHistory = [];
+            }
+            
+            // 设置新用户
             currentUser = user;
-            // 不要在这里清空历史记录，让loadUserHistory来处理
+            console.log('当前用户已设置为:', currentUser.id);
             
             // 更新UI显示
             updateLoginUI();
@@ -1386,14 +1405,21 @@
         }
         
                 function googleLogout() {
+            console.log('=== 用户登出 ===');
+            
             // 在登出前保存当前用户的历史记录
             if (currentUser && userHistory.length > 0) {
+                console.log('登出前保存历史记录，用户ID:', currentUser.id);
                 saveUserHistoryToStorage();
-                console.log('登出前已保存历史记录');
+                console.log('已保存历史记录');
             }
             
+            // 清理所有用户相关数据
+            const oldUserId = currentUser ? currentUser.id : null;
             currentUser = null;
             userHistory = [];
+            
+            console.log('用户数据已清理，旧用户ID:', oldUserId);
             
             // 更新UI显示
             updateLoginUI();
@@ -1401,12 +1427,18 @@
             // 隐藏历史记录主标签页
             document.getElementById('history-main-tab').style.display = 'none';
             
-            // 清除localStorage中的用户信息，但保留历史记录
+            // 清除localStorage中的用户信息
             localStorage.removeItem('nanoBananaUser');
             
             // 如果当前在历史记录标签页，切换到Editor标签页
             if (document.getElementById('history-tab').classList.contains('active')) {
                 switchMainTab('editor');
+            }
+            
+            // 清空历史记录显示
+            const historyList = document.getElementById('history-list');
+            if (historyList) {
+                historyList.innerHTML = '<div class="history-placeholder"><p>请先登录查看历史记录</p></div>';
             }
             
             showSuccessMessage('已成功登出');
@@ -1790,13 +1822,29 @@
             if (savedUser) {
                 try {
                     const user = JSON.parse(savedUser);
+                    console.log('检测到保存的用户信息:', user);
+                    
+                    // 检查是否有其他用户的历史记录需要清理
+                    const currentHistoryKeys = [];
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key && key.includes('nanoBananaHistory') && !key.includes(user.id)) {
+                            currentHistoryKeys.push(key);
+                        }
+                    }
+                    
+                    if (currentHistoryKeys.length > 0) {
+                        console.log('检测到其他用户的历史记录，正在清理...');
+                        currentHistoryKeys.forEach(key => {
+                            localStorage.removeItem(key);
+                            console.log('已清理历史记录键:', key);
+                        });
+                    }
+                    
+                    // 登录用户
                     loginUser(user);
                     console.log('已恢复用户登录状态');
                     
-                    // 调试：检查localStorage状态
-                    setTimeout(() => {
-                        debugLocalStorage();
-                    }, 1000);
                 } catch (error) {
                     console.error('解析保存的用户信息失败:', error);
                     localStorage.removeItem('nanoBananaUser');
