@@ -812,6 +812,7 @@
             border-radius: 10px;
             margin-bottom: 15px;
             border: 1px solid #e9ecef;
+            position: relative;
         }
 
         .history-item-image {
@@ -820,6 +821,26 @@
             border-radius: 8px;
             object-fit: cover;
             cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        
+        .history-item-image.loading {
+            opacity: 0.3;
+            cursor: default;
+        }
+        
+        .image-loading-placeholder {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #666;
+            font-size: 12px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 4px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
         }
 
         .history-item-details {
@@ -1928,9 +1949,30 @@
                             item.imageLoaded = true;
                             
                             // 更新对应的DOM元素
-                            const imgElement = document.querySelector(`[data-history-id="${item.id}"] img`);
-                            if (imgElement) {
-                                imgElement.src = `data:image/png;base64,${data.result_image}`;
+                            const historyItem = document.querySelector(`[data-history-id="${item.id}"]`);
+                            if (historyItem) {
+                                const imgElement = historyItem.querySelector('img');
+                                if (imgElement) {
+                                    // 更新图片源
+                                    imgElement.src = `data:image/png;base64,${data.result_image}`;
+                                    imgElement.className = 'history-item-image';
+                                    
+                                    // 添加点击事件
+                                    imgElement.onclick = () => showImageModal(`data:image/png;base64,${data.result_image}`);
+                                    
+                                    // 移除加载占位符
+                                    const placeholder = historyItem.querySelector('.image-loading-placeholder');
+                                    if (placeholder) {
+                                        placeholder.remove();
+                                    }
+                                    
+                                    // 启用下载按钮
+                                    const downloadBtn = historyItem.querySelector('.history-download-btn');
+                                    if (downloadBtn) {
+                                        downloadBtn.disabled = false;
+                                        downloadBtn.onclick = () => downloadHistoryImage(`data:image/png;base64,${data.result_image}`);
+                                    }
+                                }
                             }
                         }
                     } catch (error) {
@@ -1991,15 +2033,22 @@
             }
             
             const historyHTML = historyData.map(item => {
+                const hasImage = item.resultImage && item.resultImage !== 'null';
+                const imageSrc = hasImage ? item.resultImage : '';
+                const imageClass = hasImage ? 'history-item-image' : 'history-item-image loading';
+                const clickHandler = hasImage ? `onclick="showImageModal('${imageSrc}')"` : '';
+                const downloadHandler = hasImage ? `onclick="downloadHistoryImage('${imageSrc}')"` : '';
+                
                 return `
-                <div class="history-item">
-                    <img src="${item.resultImage}" alt="生成结果" class="history-item-image" onclick="showImageModal('${item.resultImage}')">
+                <div class="history-item" data-history-id="${item.id}">
+                    <img src="${imageSrc}" alt="生成结果" class="${imageClass}" ${clickHandler}>
+                    ${!hasImage ? '<div class="image-loading-placeholder">图片加载中...</div>' : ''}
                     <div class="history-item-details">
                         <span class="history-item-type">${item.type === 'text-to-image' ? '文本生成图像' : '图像编辑'}</span>
                         <div class="history-item-prompt">${item.prompt}</div>
                         <div class="history-item-date">${new Date(item.createdAt).toLocaleString()}</div>
                         <div class="history-item-actions">
-                            <button class="history-action-btn history-download-btn" onclick="downloadHistoryImage('${item.resultImage}')">下载</button>
+                            <button class="history-action-btn history-download-btn" ${downloadHandler} ${!hasImage ? 'disabled' : ''}>下载</button>
                             <button class="history-action-btn history-reference-btn" onclick="referenceHistoryImage('${item.id}')">引用</button>
                             <button class="history-action-btn history-delete-btn" onclick="deleteHistoryItem('${item.id}')" title="删除此记录">🗑️</button>
                         </div>
