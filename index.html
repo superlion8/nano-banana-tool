@@ -141,7 +141,7 @@
         }
 
         .editor-tab-button {
-            background: none;
+            background: #f8f9fa;
             border: none;
             padding: 10px 20px;
             font-size: 14px;
@@ -268,32 +268,7 @@
             box-shadow: none;
         }
 
-        .loading {
-            display: none;
-            text-align: center;
-            margin: 0 0 20px 0;
-            padding: 20px;
-        }
 
-        .loading.show {
-            display: block;
-        }
-
-        .spinner {
-            display: inline-block;
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 10px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
 
         .result {
             margin-top: 0;
@@ -926,6 +901,29 @@
             color: #666;
             font-size: 12px;
         }
+        
+        /* 历史记录同步状态样式 */
+        .history-sync-status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f8f9fa;
+            border-radius: 8px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .sync-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #e9ecef;
+            border-top: 2px solid #764ba2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
 
         @media (max-width: 768px) {
             .container {
@@ -1074,11 +1072,6 @@
             </div>
 
             <div class="right-panel">
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <p>正在生成图像，请稍候...</p>
-                </div>
-
                 <div class="error">
                     <p id="error-message"></p>
                 </div>
@@ -1608,13 +1601,8 @@
                 console.log('已显示初始占位符');
             }
             
-            // 隐藏加载和错误状态
-            const loadingSection = document.querySelector('.loading');
+            // 隐藏错误状态
             const errorSection = document.querySelector('.error');
-            if (loadingSection) {
-                loadingSection.style.display = 'none';
-                console.log('已隐藏加载状态');
-            }
             if (errorSection) {
                 errorSection.style.display = 'none';
                 console.log('已隐藏错误状态');
@@ -1687,57 +1675,92 @@
         // 历史记录相关函数
         async function loadUserHistory() {
             if (!currentUser) {
-                console.log('loadUserHistory: 没有当前用户');
                 return;
             }
             
-            console.log('loadUserHistory: 开始加载用户历史记录，用户ID:', currentUser.id);
-            
-            // 每次登录都优先从Supabase加载完整的历史记录
-            if (supabase) {
-                console.log('loadUserHistory: 优先从Supabase加载历史记录...');
-                try {
-                    const hasSupabaseHistory = await loadHistoryFromSupabase();
-                    if (hasSupabaseHistory) {
-                        console.log('loadUserHistory: 从Supabase加载历史记录成功，共', userHistory.length, '条');
-                        
-                        // 同步到localStorage作为备份
-                        saveUserHistoryToStorage();
-                        console.log('已同步Supabase数据到localStorage');
-                        
-                        renderHistory();
-                        return;
-                    } else {
-                        console.log('Supabase中没有历史记录，尝试从localStorage加载...');
-                    }
-                } catch (error) {
-                    console.error('loadUserHistory: Supabase加载失败，回退到localStorage:', error);
-                }
-            }
-            
-            // 如果Supabase不可用或没有数据，尝试从localStorage加载
-            console.log('loadUserHistory: 尝试从localStorage加载历史记录...');
+            // 先尝试从localStorage快速加载（用户体验优先）
             const hasLocalHistory = loadUserHistoryFromStorage();
-            
-            if (hasLocalHistory) {
-                console.log('loadUserHistory: 成功从localStorage加载历史记录，共', userHistory.length, '条');
-            } else {
-                // 如果没有本地历史记录，清空数组
-                userHistory = [];
-                console.log('loadUserHistory: 没有找到本地历史记录，初始化为空数组');
+            if (hasLocalHistory && userHistory.length > 0) {
+                renderHistory();
+                console.log('快速加载：从localStorage加载历史记录，共', userHistory.length, '条');
             }
             
-            renderHistory();
+            // 后台从Supabase同步最新数据（不阻塞UI）
+            if (supabase) {
+                loadHistoryFromSupabaseBackground();
+            }
+        }
+        
+        // 后台加载Supabase数据，不阻塞UI
+        async function loadHistoryFromSupabaseBackground() {
+            // 显示后台同步状态
+            showHistorySyncStatus();
             
-            console.log('loadUserHistory: 历史记录加载完成，当前userHistory长度:', userHistory.length);
+            try {
+                const { data, error } = await supabase
+                    .from('history')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .order('created_at', { ascending: false })
+                    .limit(50); // 限制加载数量，提升性能
+                
+                if (error) {
+                    console.error('Supabase加载失败:', error);
+                    hideHistorySyncStatus();
+                    return;
+                }
+                
+                if (data && data.length > 0) {
+                    // 转换数据格式
+                    const newHistory = data.map(item => ({
+                        id: String(item.id),
+                        type: item.type,
+                        prompt: item.prompt,
+                        resultImage: item.result_image,
+                        inputImages: item.input_images || [],
+                        createdAt: item.created_at
+                    }));
+                    
+                    // 更新本地数据
+                    userHistory = newHistory;
+                    saveUserHistoryToStorage();
+                    
+                    // 重新渲染（如果用户当前在History页面）
+                    const historyTab = document.querySelector('.main-tab-button[onclick*="history"]');
+                    if (historyTab && historyTab.classList.contains('active')) {
+                        renderHistory();
+                        console.log('后台同步：Supabase数据已更新，共', userHistory.length, '条');
+                    }
+                }
+                
+                hideHistorySyncStatus();
+            } catch (error) {
+                console.error('后台同步失败:', error);
+                hideHistorySyncStatus();
+            }
+        }
+        
+        // 显示历史记录同步状态
+        function showHistorySyncStatus() {
+            const historyList = document.getElementById('history-list');
+            if (historyList && userHistory.length > 0) {
+                const syncStatus = document.createElement('div');
+                syncStatus.id = 'history-sync-status';
+                syncStatus.className = 'history-sync-status';
+                syncStatus.innerHTML = '<div class="sync-spinner"></div><small>正在同步最新数据...</small>';
+                historyList.appendChild(syncStatus);
+            }
+        }
+        
+        // 隐藏历史记录同步状态
+        function hideHistorySyncStatus() {
+            const syncStatus = document.getElementById('history-sync-status');
+            if (syncStatus) {
+                syncStatus.remove();
+            }
         }
         
         function renderHistory(historyToRender = null) {
-            console.log('=== renderHistory 被调用 ===');
-            console.log('传入的historyToRender:', historyToRender);
-            console.log('当前userHistory:', userHistory);
-            console.log('userHistory长度:', userHistory ? userHistory.length : 'undefined');
-            
             const historyList = document.getElementById('history-list');
             if (!historyList) {
                 console.error('找不到history-list元素');
@@ -1745,24 +1768,19 @@
             }
             
             if (!currentUser) {
-                console.log('没有当前用户，显示登录提示');
                 historyList.innerHTML = '<div class="history-placeholder"><p>请先登录查看历史记录</p></div>';
                 return;
             }
             
             // 使用传入的历史记录或默认的userHistory
             const historyData = historyToRender || userHistory;
-            console.log('使用的历史数据:', historyData);
-            console.log('历史数据长度:', historyData ? historyData.length : 'undefined');
             
             if (!historyData || historyData.length === 0) {
-                console.log('历史数据为空，显示空状态');
                 historyList.innerHTML = '<div class="history-placeholder"><p>暂无生成历史记录</p><small>生成图像后，历史记录将显示在这里</small></div>';
                 return;
             }
             
             const historyHTML = historyData.map(item => {
-                console.log(`渲染历史记录项: ID="${item.id}", 类型=${typeof item.id}`);
                 return `
                 <div class="history-item">
                     <img src="${item.resultImage}" alt="生成结果" class="history-item-image" onclick="showImageModal('${item.resultImage}')">
@@ -2279,7 +2297,7 @@
 
         // 显示加载状态
         function showLoading() {
-            document.querySelector('.loading').classList.add('show');
+            // 禁用所有生成按钮
             document.querySelectorAll('.generate-btn').forEach(btn => {
                 btn.disabled = true;
             });
@@ -2287,7 +2305,7 @@
 
         // 隐藏加载状态
         function hideLoading() {
-            document.querySelector('.loading').classList.remove('show');
+            // 启用所有生成按钮
             document.querySelectorAll('.generate-btn').forEach(btn => {
                 btn.disabled = false;
             });
@@ -2338,6 +2356,11 @@
             const resultSection = document.querySelector('.result');
             const initialPlaceholder = document.getElementById('initial-placeholder');
             
+            // 先隐藏占位符
+            if (initialPlaceholder) {
+                initialPlaceholder.style.display = 'none';
+            }
+            
             if (resultSection) {
                 // 清空结果区域并显示状态
                 resultSection.innerHTML = `
@@ -2349,24 +2372,27 @@
                 resultSection.style.display = 'block';
                 resultSection.classList.add('show');
                 console.log('在结果区域显示生成状态:', message);
-            } else if (initialPlaceholder) {
-                // 如果没有结果区域，在占位符区域显示
-                initialPlaceholder.innerHTML = `
-                    <div class="generation-status-inline">
-                        <div class="status-spinner"></div>
-                        <p>${message}</p>
-                    </div>
-                `;
-                initialPlaceholder.style.display = 'block';
-                console.log('在占位符区域显示生成状态:', message);
             }
         }
         
         // 隐藏生成状态提示
         function hideGenerationStatus() {
-            // 状态提示会在showResult或hideResult中自动处理
-            // 这里只需要记录日志
-            console.log('隐藏生成状态提示');
+            const resultSection = document.querySelector('.result');
+            const initialPlaceholder = document.getElementById('initial-placeholder');
+            
+            if (resultSection) {
+                // 清空结果区域
+                resultSection.innerHTML = '';
+                resultSection.style.display = 'none';
+                resultSection.classList.remove('show');
+            }
+            
+            // 恢复占位符显示
+            if (initialPlaceholder) {
+                initialPlaceholder.style.display = 'block';
+            }
+            
+            console.log('已清除生成状态提示');
         }
         
 
@@ -2699,12 +2725,14 @@
                     </div>
                 `;
                 
+                resultDiv.style.display = 'block';
                 resultDiv.classList.add('show');
                 console.log('已恢复结果区域HTML并添加show类');
             } else {
                 console.error('未找到result div元素');
             }
             
+            // 确保占位符被隐藏
             if (placeholder) {
                 placeholder.style.display = 'none';
                 console.log('已隐藏占位符');
@@ -2733,7 +2761,8 @@
             
             if (resultDiv) {
                 resultDiv.classList.remove('show');
-                console.log('已移除show类从result div');
+                resultDiv.style.display = 'none';
+                console.log('已隐藏result div');
             } else {
                 console.error('未找到result div元素');
             }
@@ -3041,10 +3070,10 @@
                 }
             } catch (error) {
                 console.error('生成图像错误:', error);
+                hideGenerationStatus(); // 清除生成状态
                 showError(`生成图像失败: ${error.message}`);
             } finally {
                 hideLoading();
-                hideGenerationStatus();
             }
         }
 
@@ -3361,10 +3390,10 @@
                 
             } catch (error) {
                 console.error('Multi-image generation error:', error);
+                hideGenerationStatus(); // 清除生成状态
                 showError(`图像编辑失败: ${error.message}`);
             } finally {
                 hideLoading();
-                hideGenerationStatus();
             }
         }
 
