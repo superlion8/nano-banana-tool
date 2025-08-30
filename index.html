@@ -342,7 +342,7 @@
             justify-content: center;
         }
 
-        .modal-download-btn, .modal-close-btn {
+        .modal-download-btn, .modal-reference-btn, .modal-close-btn {
             padding: 10px 20px;
             border: none;
             border-radius: 8px;
@@ -372,6 +372,16 @@
             transform: translateY(-1px);
         }
 
+        .modal-reference-btn {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .modal-reference-btn:hover {
+            background: #138496;
+            transform: translateY(-1px);
+        }
+
         .download-btn {
             padding: 12px 30px;
             background: #28a745;
@@ -388,6 +398,34 @@
         .download-btn:hover {
             background: #218838;
             transform: translateY(-1px);
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .reference-btn {
+            padding: 12px 30px;
+            background: #17a2b8;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .reference-btn:hover {
+            background: #138496;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(23, 162, 184, 0.3);
         }
 
         .preview-container {
@@ -413,6 +451,20 @@
         }
 
         .error.show {
+            display: block;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 1px solid #c3e6cb;
+            display: none;
+        }
+
+        .success-message.show {
             display: block;
         }
 
@@ -714,8 +766,10 @@
                         <img id="result-image" src="" alt="生成的图像" onclick="showImageModal(this.src)" class="clickable-image">
                         <div class="image-hint">点击图像可放大查看</div>
                     </div>
-                    <br>
-                    <button class="download-btn" onclick="downloadImage()">下载图像</button>
+                    <div class="result-actions">
+                        <button class="download-btn" onclick="downloadImage()">下载图像</button>
+                        <button class="reference-btn" onclick="referenceImage()" title="引用此图像进行下一次编辑">📎 引用图像</button>
+                    </div>
                 </div>
 
                 <!-- 图像放大模态框 -->
@@ -725,6 +779,7 @@
                         <img id="modal-image" src="" alt="放大图像">
                         <div class="modal-actions">
                             <button class="modal-download-btn" onclick="downloadModalImage()">下载图像</button>
+                            <button class="modal-reference-btn" onclick="referenceModalImage()">📎 引用图像</button>
                             <button class="modal-close-btn" onclick="closeImageModal()">关闭</button>
                         </div>
                     </div>
@@ -771,6 +826,12 @@
             hideError();
             hideDebugInfo();
             
+            // 隐藏成功消息
+            const successMessage = document.getElementById('success-message');
+            if (successMessage) {
+                successMessage.classList.remove('show');
+            }
+            
             // 清空多图选择
             if (tabId !== 'multi-image') {
                 selectedMultiFiles = [];
@@ -814,6 +875,33 @@
         function showError(message) {
             document.getElementById('error-message').textContent = message;
             document.querySelector('.error').classList.add('show');
+        }
+
+        // 显示成功消息
+        function showSuccessMessage(message) {
+            // 创建成功消息元素
+            let successDiv = document.getElementById('success-message');
+            if (!successDiv) {
+                successDiv = document.createElement('div');
+                successDiv.id = 'success-message';
+                successDiv.className = 'success-message';
+                successDiv.innerHTML = `<p>${message}</p>`;
+                
+                // 插入到错误消息后面
+                const errorDiv = document.querySelector('.error');
+                if (errorDiv && errorDiv.parentNode) {
+                    errorDiv.parentNode.insertBefore(successDiv, errorDiv.nextSibling);
+                }
+            } else {
+                successDiv.innerHTML = `<p>${message}</p>`;
+            }
+            
+            successDiv.classList.add('show');
+            
+            // 3秒后自动隐藏
+            setTimeout(() => {
+                successDiv.classList.remove('show');
+            }, 3000);
         }
 
         // 隐藏错误
@@ -887,6 +975,105 @@
             const modalImage = document.getElementById('modal-image');
             if (modalImage && modalImage.src) {
                 downloadImageFromSrc(modalImage.src);
+            }
+        }
+
+        // 引用图像进行编辑
+        function referenceImage() {
+            if (!currentImageData) {
+                showError('没有可引用的图像');
+                return;
+            }
+
+            // 切换到图像修改标签页
+            switchTab('image-edit');
+            
+            // 设置引用图像
+            setReferencedImage(currentImageData);
+            
+            // 显示成功提示
+            showSuccessMessage('图像已引用到编辑区域，请在上方输入修改提示词');
+        }
+
+        // 引用模态框中的图像
+        function referenceModalImage() {
+            const modalImage = document.getElementById('modal-image');
+            if (modalImage && modalImage.src) {
+                // 从模态框图像URL中提取base64数据
+                const imageSrc = modalImage.src;
+                if (imageSrc.startsWith('data:')) {
+                    // 直接使用data URL
+                    setReferencedImageFromSrc(imageSrc);
+                } else {
+                    showError('无法引用此图像');
+                    return;
+                }
+                
+                // 关闭模态框
+                closeImageModal();
+                
+                // 切换到图像修改标签页
+                switchTab('image-edit');
+                
+                // 显示成功提示
+                showSuccessMessage('图像已引用到编辑区域，请在上方输入修改提示词');
+            }
+        }
+
+        // 设置引用的图像
+        function setReferencedImage(base64Data) {
+            // 创建图像文件对象
+            const byteCharacters = atob(base64Data);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'image/png' });
+            
+            // 创建文件对象
+            const file = new File([blob], 'referenced_image.png', { type: 'image/png' });
+            
+            // 设置为选中的文件
+            selectedFile = file;
+            
+            // 更新预览
+            updateImagePreview(file);
+        }
+
+        // 从图像源设置引用的图像
+        function setReferencedImageFromSrc(imageSrc) {
+            // 创建图像文件对象
+            fetch(imageSrc)
+                .then(response => response.blob())
+                .then(blob => {
+                    const file = new File([blob], 'referenced_image.png', { type: 'image/png' });
+                    selectedFile = file;
+                    updateImagePreview(file);
+                })
+                .catch(error => {
+                    console.error('引用图像失败:', error);
+                    showError('引用图像失败');
+                });
+        }
+
+        // 更新图像预览
+        function updateImagePreview(file) {
+            const previewContainer = document.getElementById('image-preview');
+            const previewImg = document.getElementById('preview-img');
+            const fileDisplay = document.querySelector('.file-input-display');
+            const fileDisplayText = document.getElementById('file-display-text');
+            
+            if (previewContainer && previewImg && fileDisplay && fileDisplayText) {
+                // 显示预览
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    previewContainer.style.display = 'block';
+                    fileDisplayText.textContent = file.name;
+                    fileDisplay.classList.add('has-file');
+                };
+                reader.readAsDataURL(file);
             }
         }
 
