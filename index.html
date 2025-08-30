@@ -992,6 +992,13 @@
         let userHistory = [];
         
         // Google OAuth 2.0 配置
+        // 请按照以下步骤配置：
+        // 1. 访问 https://console.cloud.google.com/
+        // 2. 创建项目或选择现有项目
+        // 3. 启用 Google+ API 和 Google OAuth2 API
+        // 4. 在"凭据"页面创建OAuth 2.0客户端ID
+        // 5. 设置授权域名（包括你的开发域名）
+        // 6. 将获得的客户端ID替换下面的值
         const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID'; // 需要替换为你的Google Client ID
         const GOOGLE_SCOPE = 'openid email profile';
 
@@ -1059,28 +1066,63 @@
                 return;
             }
             
-            // 创建Google OAuth 2.0 授权URL
-            const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-                `client_id=${GOOGLE_CLIENT_ID}&` +
-                `redirect_uri=${encodeURIComponent(window.location.origin + '/oauth-callback.html')}&` +
-                `scope=${encodeURIComponent(GOOGLE_SCOPE)}&` +
-                `response_type=code&` +
-                `access_type=offline&` +
-                `prompt=consent`;
+            // 检查Google Client ID是否已配置
+            if (GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
+                showError('Google登录未配置。请先配置Google OAuth客户端ID。');
+                console.error('Google OAuth Client ID not configured');
+                return;
+            }
             
-            // 打开授权窗口
-            const authWindow = window.open(authUrl, 'googleAuth', 
-                'width=500,height=600,scrollbars=yes,resizable=yes');
-            
-            // 监听授权结果
-            window.addEventListener('message', function(event) {
-                if (event.origin !== window.location.origin) return;
+            try {
+                // 创建Google OAuth 2.0 授权URL
+                const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+                    `client_id=${GOOGLE_CLIENT_ID}&` +
+                    `redirect_uri=${encodeURIComponent(window.location.origin + '/oauth-callback.html')}&` +
+                    `scope=${encodeURIComponent(GOOGLE_SCOPE)}&` +
+                    `response_type=code&` +
+                    `access_type=offline&` +
+                    `prompt=consent`;
                 
-                if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
-                    handleGoogleAuthSuccess(event.data.code);
-                    authWindow.close();
+                console.log('Google OAuth URL:', authUrl);
+                
+                // 打开授权窗口
+                const authWindow = window.open(authUrl, 'googleAuth', 
+                    'width=500,height=600,scrollbars=yes,resizable=yes');
+                
+                if (!authWindow) {
+                    showError('无法打开登录窗口，请检查浏览器是否阻止了弹窗');
+                    return;
                 }
-            });
+                
+                // 监听授权结果
+                const messageListener = function(event) {
+                    if (event.origin !== window.location.origin) return;
+                    
+                    if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
+                        handleGoogleAuthSuccess(event.data.code);
+                        authWindow.close();
+                        window.removeEventListener('message', messageListener);
+                    } else if (event.data.type === 'GOOGLE_AUTH_ERROR') {
+                        showError(`Google登录失败: ${event.data.error}`);
+                        authWindow.close();
+                        window.removeEventListener('message', messageListener);
+                    }
+                };
+                
+                window.addEventListener('message', messageListener);
+                
+                // 检查窗口是否被关闭
+                const checkWindow = setInterval(() => {
+                    if (authWindow.closed) {
+                        clearInterval(checkWindow);
+                        window.removeEventListener('message', messageListener);
+                    }
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Google登录错误:', error);
+                showError(`Google登录出错: ${error.message}`);
+            }
         }
         
         function handleGoogleAuthSuccess(authCode) {
@@ -1293,6 +1335,35 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Page loaded successfully');
             console.log('Available functions:', typeof switchTab, typeof generateFromText);
+            
+            // 检查Google OAuth配置
+            if (GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
+                console.warn('⚠️ Google OAuth Client ID 未配置！');
+                console.warn('请按照以下步骤配置：');
+                console.warn('1. 访问 https://console.cloud.google.com/');
+                console.warn('2. 创建项目或选择现有项目');
+                console.warn('3. 启用 Google+ API 和 Google OAuth2 API');
+                console.warn('4. 在"凭据"页面创建OAuth 2.0客户端ID');
+                console.warn('5. 设置授权域名（包括你的开发域名）');
+                console.warn('6. 将获得的客户端ID替换代码中的 YOUR_GOOGLE_CLIENT_ID');
+                
+                // 显示配置提示
+                const configWarning = document.createElement('div');
+                configWarning.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#fff3cd;color:#856404;padding:15px;border-radius:8px;border:1px solid #ffeaa7;z-index:10000;max-width:600px;text-align:center;';
+                configWarning.innerHTML = `
+                    <strong>⚠️ Google登录未配置</strong><br>
+                    请先配置Google OAuth客户端ID才能使用登录功能<br>
+                    <small>详细配置说明请查看控制台日志</small>
+                `;
+                document.body.appendChild(configWarning);
+                
+                // 5秒后自动隐藏
+                setTimeout(() => {
+                    configWarning.style.display = 'none';
+                }, 5000);
+            } else {
+                console.log('✅ Google OAuth Client ID 已配置');
+            }
             
             // 检查是否有保存的登录状态
             const savedUser = localStorage.getItem('nanoBananaUser');

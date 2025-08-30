@@ -83,14 +83,38 @@
             const urlParams = new URLSearchParams(window.location.search);
             const code = urlParams.get('code');
             const error = urlParams.get('error');
+            const errorDescription = urlParams.get('error_description');
+            
+            console.log('OAuth回调参数:', { code, error, errorDescription });
             
             if (error) {
-                showError('Google登录被取消或出现错误');
+                const errorMessage = errorDescription || 'Google登录被取消或出现错误';
+                console.error('OAuth错误:', error, errorMessage);
+                
+                // 向父窗口发送错误消息
+                if (window.opener) {
+                    window.opener.postMessage({
+                        type: 'GOOGLE_AUTH_ERROR',
+                        error: errorMessage
+                    }, window.location.origin);
+                }
+                
+                showError(`登录失败: ${errorMessage}`);
                 return;
             }
             
             if (!code) {
-                showError('未收到授权码');
+                const errorMsg = '未收到授权码，请检查OAuth配置';
+                console.error(errorMsg);
+                
+                if (window.opener) {
+                    window.opener.postMessage({
+                        type: 'GOOGLE_AUTH_ERROR',
+                        error: errorMsg
+                    }, window.location.origin);
+                }
+                
+                showError(errorMsg);
                 return;
             }
             
@@ -116,6 +140,7 @@
                     showError('无法与主页面通信');
                 }
             } catch (error) {
+                console.error('处理登录结果时出现错误:', error);
                 showError('处理登录结果时出现错误');
             }
         }
