@@ -1322,13 +1322,13 @@
         
         function loginUser(user) {
             currentUser = user;
-            userHistory = []; // 清空历史记录
+            // 不要在这里清空历史记录，让loadUserHistory来处理
             
             // 更新UI显示
             updateLoginUI();
             
-                            // 显示历史记录主标签页
-                document.getElementById('history-main-tab').style.display = 'inline-block';
+            // 显示历史记录主标签页
+            document.getElementById('history-main-tab').style.display = 'inline-block';
             
             // 加载用户历史记录
             loadUserHistory();
@@ -1394,20 +1394,29 @@
         
         // 历史记录相关函数
         function loadUserHistory() {
-            if (!currentUser) return;
+            if (!currentUser) {
+                console.log('loadUserHistory: 没有当前用户');
+                return;
+            }
+            
+            console.log('loadUserHistory: 开始加载用户历史记录，用户ID:', currentUser.id);
             
             // 首先尝试从localStorage加载历史记录
             const hasLocalHistory = loadUserHistoryFromStorage();
             
-            if (!hasLocalHistory) {
+            if (hasLocalHistory) {
+                console.log('loadUserHistory: 成功从localStorage加载历史记录，共', userHistory.length, '条');
+            } else {
                 // 如果没有本地历史记录，清空数组
                 userHistory = [];
-                console.log('没有找到本地历史记录，初始化为空');
+                console.log('loadUserHistory: 没有找到本地历史记录，初始化为空数组');
             }
             
             // 这里应该从后端API获取用户历史记录
             // 目前暂时使用本地存储，等待后端API
             renderHistory();
+            
+            console.log('loadUserHistory: 历史记录加载完成，当前userHistory长度:', userHistory.length);
         }
         
         function renderHistory(historyToRender = null) {
@@ -1549,32 +1558,62 @@
         
         // 保存用户历史记录到localStorage
         function saveUserHistoryToStorage() {
-            if (currentUser && userHistory) {
-                const storageKey = `nanoBananaHistory_${currentUser.id}`;
-                try {
-                    localStorage.setItem(storageKey, JSON.stringify(userHistory));
-                    console.log('历史记录已保存到localStorage');
-                } catch (error) {
-                    console.error('保存历史记录到localStorage失败:', error);
+            if (!currentUser) {
+                console.log('saveUserHistoryToStorage: 没有当前用户');
+                return;
+            }
+            
+            if (!userHistory) {
+                console.log('saveUserHistoryToStorage: 没有历史记录数据');
+                return;
+            }
+            
+            const storageKey = `nanoBananaHistory_${currentUser.id}`;
+            console.log('saveUserHistoryToStorage: 保存到存储键:', storageKey);
+            console.log('saveUserHistoryToStorage: 保存的历史记录数量:', userHistory.length);
+            
+            try {
+                localStorage.setItem(storageKey, JSON.stringify(userHistory));
+                console.log('saveUserHistoryToStorage: 历史记录已成功保存到localStorage');
+                
+                // 验证保存是否成功
+                const savedData = localStorage.getItem(storageKey);
+                if (savedData) {
+                    const parsedData = JSON.parse(savedData);
+                    console.log('saveUserHistoryToStorage: 验证保存成功，存储的数据数量:', parsedData.length);
+                } else {
+                    console.error('saveUserHistoryToStorage: 验证失败，存储后无法读取数据');
                 }
+            } catch (error) {
+                console.error('saveUserHistoryToStorage: 保存历史记录到localStorage失败:', error);
             }
         }
         
         // 从localStorage加载用户历史记录
         function loadUserHistoryFromStorage() {
-            if (currentUser) {
-                const storageKey = `nanoBananaHistory_${currentUser.id}`;
-                try {
-                    const savedHistory = localStorage.getItem(storageKey);
-                    if (savedHistory) {
-                        userHistory = JSON.parse(savedHistory);
-                        console.log('从localStorage加载历史记录:', userHistory.length, '条');
-                        return true;
-                    }
-                } catch (error) {
-                    console.error('从localStorage加载历史记录失败:', error);
-                }
+            if (!currentUser) {
+                console.log('loadUserHistoryFromStorage: 没有当前用户');
+                return false;
             }
+            
+            const storageKey = `nanoBananaHistory_${currentUser.id}`;
+            console.log('loadUserHistoryFromStorage: 尝试加载存储键:', storageKey);
+            
+            try {
+                const savedHistory = localStorage.getItem(storageKey);
+                console.log('loadUserHistoryFromStorage: localStorage中的原始数据:', savedHistory ? '有数据' : '无数据');
+                
+                if (savedHistory) {
+                    userHistory = JSON.parse(savedHistory);
+                    console.log('loadUserHistoryFromStorage: 成功解析历史记录，共', userHistory.length, '条');
+                    return true;
+                } else {
+                    console.log('loadUserHistoryFromStorage: 没有找到保存的历史记录');
+                }
+            } catch (error) {
+                console.error('loadUserHistoryFromStorage: 解析历史记录失败:', error);
+            }
+            
             return false;
         }
         
@@ -1625,6 +1664,11 @@
                     const user = JSON.parse(savedUser);
                     loginUser(user);
                     console.log('已恢复用户登录状态');
+                    
+                    // 调试：检查localStorage状态
+                    setTimeout(() => {
+                        debugLocalStorage();
+                    }, 1000);
                 } catch (error) {
                     console.error('解析保存的用户信息失败:', error);
                     localStorage.removeItem('nanoBananaUser');
@@ -1720,6 +1764,29 @@
             if (loadingDiv) {
                 loadingDiv.classList.remove('show');
             }
+        }
+        
+        // 调试函数：检查localStorage状态
+        function debugLocalStorage() {
+            console.log('=== localStorage 调试信息 ===');
+            console.log('当前用户:', currentUser);
+            if (currentUser) {
+                const storageKey = `nanoBananaHistory_${currentUser.id}`;
+                console.log('历史记录存储键:', storageKey);
+                const savedData = localStorage.getItem(storageKey);
+                console.log('存储的历史记录:', savedData ? '有数据' : '无数据');
+                if (savedData) {
+                    try {
+                        const parsed = JSON.parse(savedData);
+                        console.log('解析后的历史记录数量:', parsed.length);
+                        console.log('历史记录内容:', parsed);
+                    } catch (e) {
+                        console.error('解析存储数据失败:', e);
+                    }
+                }
+            }
+            console.log('当前userHistory数组长度:', userHistory ? userHistory.length : 'undefined');
+            console.log('========================');
         }
         
         // 显示成功消息
