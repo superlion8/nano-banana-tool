@@ -1713,10 +1713,47 @@
         }
         
         function referenceHistoryImage(historyId) {
-            const historyItem = userHistory.find(item => item.id === historyId);
-            if (!historyItem) {
-                showError('未找到要引用的历史记录');
+            console.log('=== 引用历史记录调试信息 ===');
+            console.log('要引用的historyId:', historyId);
+            console.log('当前userHistory数组:', userHistory);
+            console.log('userHistory长度:', userHistory ? userHistory.length : 'undefined');
+            
+            if (!userHistory || userHistory.length === 0) {
+                console.error('userHistory数组为空或未定义');
+                showError('历史记录数据为空，请刷新页面重试');
                 return;
+            }
+            
+            // 显示所有历史记录项的ID，帮助调试
+            console.log('userHistory中所有项的ID:');
+            userHistory.forEach((item, index) => {
+                console.log(`  [${index}] ID: "${item.id}", 类型: ${typeof item.id}`);
+            });
+            
+            const historyItem = userHistory.find(item => {
+                const match = item.id === historyId;
+                console.log(`比较: "${item.id}" === "${historyId}" => ${match}`);
+                return match;
+            });
+            
+            if (!historyItem) {
+                console.error('未找到匹配的历史记录项，尝试其他查找方式...');
+                
+                // 尝试通过localStorage查找历史记录
+                const foundInStorage = findHistoryInLocalStorage(historyId);
+                if (foundInStorage) {
+                    console.log('在localStorage中找到历史记录:', foundInStorage);
+                    historyItem = foundInStorage;
+                } else {
+                    console.error('所有查找方式都失败了');
+                    console.error('可能的原因:');
+                    console.error('1. historyId类型不匹配');
+                    console.error('2. userHistory数组为空或未定义');
+                    console.error('3. 历史记录项的ID格式不一致');
+                    console.error('4. 数据已从localStorage中清除');
+                    showError('未找到要引用的历史记录，请检查数据或刷新页面');
+                    return;
+                }
             }
             
             console.log('引用历史记录:', historyItem);
@@ -1789,6 +1826,40 @@
             showSuccessMessage(`已引用历史记录，共${imageCount}张图像，您可以继续编辑或生成新图像`);
             
             console.log('引用完成，当前选择的图像数量:', selectedMultiFiles.length);
+        }
+        
+        // 在localStorage中查找历史记录
+        function findHistoryInLocalStorage(historyId) {
+            console.log('尝试在localStorage中查找历史记录:', historyId);
+            
+            if (!currentUser) {
+                console.log('没有当前用户，无法查找localStorage');
+                return null;
+            }
+            
+            // 遍历所有localStorage键，查找包含历史记录的键
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.includes('nanoBananaHistory')) {
+                    try {
+                        const historyData = localStorage.getItem(key);
+                        if (historyData) {
+                            const history = JSON.parse(historyData);
+                            // 在历史记录中查找匹配的ID
+                            const foundItem = history.find(item => item.id === historyId);
+                            if (foundItem) {
+                                console.log('在localStorage键', key, '中找到历史记录:', foundItem);
+                                return foundItem;
+                            }
+                        }
+                    } catch (error) {
+                        console.error('解析localStorage数据失败:', error);
+                    }
+                }
+            }
+            
+            console.log('在localStorage中未找到匹配的历史记录');
+            return null;
         }
         
         function filterHistory() {
