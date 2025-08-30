@@ -1832,16 +1832,22 @@
                 }
                 
                 if (data && data.length > 0) {
-                    // 转换数据格式，不包含图片数据（延迟加载）
-                    const newHistory = data.map(item => ({
-                        id: String(item.id),
-                        type: item.type,
-                        prompt: item.prompt,
-                        resultImage: null, // 延迟加载图片
-                        inputImages: item.input_images || [],
-                        createdAt: item.created_at,
-                        imageLoaded: false // 标记图片是否已加载
-                    }));
+                    // 转换数据格式，智能处理图片数据
+                    const newHistory = data.map(item => {
+                        // 检查localStorage中是否已有该记录的图片数据
+                        const existingItem = userHistory.find(existing => existing.id === String(item.id));
+                        const hasExistingImage = existingItem && existingItem.resultImage && existingItem.resultImage !== 'null' && existingItem.resultImage !== '';
+                        
+                        return {
+                            id: String(item.id),
+                            type: item.type,
+                            prompt: item.prompt,
+                            resultImage: hasExistingImage ? existingItem.resultImage : null, // 保留已有图片或标记为需要加载
+                            inputImages: item.input_images || [],
+                            createdAt: item.created_at,
+                            imageLoaded: hasExistingImage // 如果已有图片则标记为已加载
+                        };
+                    });
                     
                     // 如果是第一页，直接替换；否则返回数据供调用者处理
                     if (page === 1) {
@@ -1974,6 +1980,14 @@
                                     }
                                 }
                             }
+                            
+                            // 更新localStorage中的数据
+                            const existingIndex = userHistory.findIndex(existing => existing.id === item.id);
+                            if (existingIndex !== -1) {
+                                userHistory[existingIndex].resultImage = item.resultImage;
+                                userHistory[existingIndex].imageLoaded = true;
+                                saveUserHistoryToStorage();
+                            }
                         }
                     } catch (error) {
                         console.warn('加载图片失败:', item.id, error);
@@ -2033,7 +2047,8 @@
             }
             
             const historyHTML = historyData.map(item => {
-                const hasImage = item.resultImage && item.resultImage !== 'null';
+                // 检查图片数据：优先使用localStorage中的完整数据，如果没有则标记为需要加载
+                const hasImage = item.resultImage && item.resultImage !== 'null' && item.resultImage !== '';
                 const imageSrc = hasImage ? item.resultImage : '';
                 const imageClass = hasImage ? 'history-item-image' : 'history-item-image loading';
                 const clickHandler = hasImage ? `onclick="showImageModal('${imageSrc}')"` : '';
