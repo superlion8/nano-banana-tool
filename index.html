@@ -344,88 +344,9 @@
             cursor: zoom-in;
         }
 
-        #modal-image.zoomed {
-            cursor: zoom-out;
-            transform: scale(1.5);
-            max-width: none;
-            max-height: none;
-        }
 
-        #modal-image.zoomed:hover {
-            transform: scale(2.0);
-        }
 
-        .modal-actions {
-            margin-top: 25px;
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
 
-        .modal-download-btn, .modal-reference-btn, .modal-close-btn, .modal-zoom-btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            min-width: 120px;
-        }
-
-        .modal-download-btn {
-            background: #28a745;
-            color: white;
-        }
-
-        .modal-download-btn:hover {
-            background: #218838;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
-        }
-
-        .modal-close-btn {
-            background: #6c757d;
-            color: white;
-        }
-
-        .modal-close-btn:hover {
-            background: #5a6268;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(108, 117, 125, 0.3);
-        }
-
-        .modal-reference-btn {
-            background: #17a2b8;
-            color: white;
-        }
-
-        .modal-reference-btn:hover {
-            background: #138496;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(23, 162, 184, 0.3);
-        }
-
-        .modal-zoom-btn {
-            background: #6f42c1;
-            color: white;
-        }
-
-        .modal-zoom-btn:hover {
-            background: #5a32a3;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(111, 66, 193, 0.3);
-        }
-
-        .modal-zoom-btn.zoomed {
-            background: #dc3545;
-        }
-
-        .modal-zoom-btn.zoomed:hover {
-            background: #c82333;
-            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
-        }
 
         .download-btn {
             padding: 12px 30px;
@@ -706,13 +627,7 @@
                 width: 100%;
             }
 
-            #modal-image.zoomed {
-                transform: scale(1.2);
-            }
 
-            #modal-image.zoomed:hover {
-                transform: scale(1.4);
-            }
         }
     </style>
 </head>
@@ -816,12 +731,7 @@
                     <div class="modal-content">
                         <span class="close-modal" onclick="closeImageModal()">&times;</span>
                         <img id="modal-image" src="" alt="放大图像">
-                        <div class="modal-actions">
-                            <button class="modal-zoom-btn" onclick="toggleImageZoom()" title="切换图像缩放">🔍 缩放</button>
-                            <button class="modal-download-btn" onclick="downloadModalImage()">下载图像</button>
-                            <button class="modal-reference-btn" onclick="referenceModalImage()">📎 引用图像</button>
-                            <button class="modal-close-btn" onclick="closeImageModal()">关闭</button>
-                        </div>
+
                     </div>
                 </div>
 
@@ -1030,15 +940,6 @@
                 // 先设置图像源
                 modalImage.src = imageSrc;
                 
-                // 重置缩放状态
-                modalImage.classList.remove('zoomed');
-                const zoomBtn = document.querySelector('.modal-zoom-btn');
-                if (zoomBtn) {
-                    zoomBtn.classList.remove('zoomed');
-                    zoomBtn.innerHTML = '🔍 缩放';
-                    zoomBtn.title = '切换图像缩放';
-                }
-                
                 // 等待图像加载完成后显示模态框
                 modalImage.onload = function() {
                     modal.style.display = 'block';
@@ -1088,29 +989,12 @@
 
         // 处理模态框键盘事件
         function handleModalKeyboard(event) {
-            switch(event.key) {
-                case 'Escape':
-                    closeImageModal();
-                    break;
-                case 'Enter':
-                    toggleImageZoom();
-                    break;
-                case 'ArrowLeft':
-                    // 可以添加上一张图片功能
-                    break;
-                case 'ArrowRight':
-                    // 可以添加下一张图片功能
-                    break;
+            if (event.key === 'Escape') {
+                closeImageModal();
             }
         }
 
-        // 下载模态框中的图像
-        function downloadModalImage() {
-            const modalImage = document.getElementById('modal-image');
-            if (modalImage && modalImage.src) {
-                downloadImageFromSrc(modalImage.src);
-            }
-        }
+
 
         // 引用图像进行编辑
         function referenceImage() {
@@ -1129,52 +1013,9 @@
             showSuccessMessage('图像已引用到编辑区域，请在上方输入修改提示词');
         }
 
-        // 切换图像缩放
-        function toggleImageZoom() {
-            const modalImage = document.getElementById('modal-image');
-            const zoomBtn = document.querySelector('.modal-zoom-btn');
-            
-            if (modalImage && zoomBtn) {
-                if (modalImage.classList.contains('zoomed')) {
-                    // 取消缩放
-                    modalImage.classList.remove('zoomed');
-                    zoomBtn.classList.remove('zoomed');
-                    zoomBtn.innerHTML = '🔍 缩放';
-                    zoomBtn.title = '切换图像缩放';
-                } else {
-                    // 启用缩放
-                    modalImage.classList.add('zoomed');
-                    zoomBtn.classList.add('zoomed');
-                    zoomBtn.innerHTML = '🔍 取消缩放';
-                    zoomBtn.title = '取消图像缩放';
-                }
-            }
-        }
 
-        // 引用模态框中的图像
-        function referenceModalImage() {
-            const modalImage = document.getElementById('modal-image');
-            if (modalImage && modalImage.src) {
-                // 从模态框图像URL中提取base64数据
-                const imageSrc = modalImage.src;
-                if (imageSrc.startsWith('data:')) {
-                    // 直接使用data URL
-                    setReferencedImageFromSrc(imageSrc);
-                } else {
-                    showError('无法引用此图像');
-                    return;
-                }
-                
-                // 关闭模态框
-                closeImageModal();
-                
-                // 切换到图像修改标签页
-                switchTab('image-edit');
-                
-                // 显示成功提示
-                showSuccessMessage('图像已引用到编辑区域，请在上方输入修改提示词');
-            }
-        }
+
+
 
         // 设置引用的图像
         function setReferencedImage(base64Data) {
@@ -1756,19 +1597,7 @@
                 }
             });
 
-            // 添加鼠标滚轮缩放功能
-            if (imageModal) {
-                imageModal.addEventListener('wheel', function(e) {
-                    e.preventDefault();
-                    const modalImage = document.getElementById('modal-image');
-                    if (modalImage && modalImage.classList.contains('zoomed')) {
-                        const delta = e.deltaY > 0 ? -0.1 : 0.1;
-                        const currentScale = parseFloat(modalImage.style.transform.replace('scale(', '').replace(')', '') || 1.5);
-                        const newScale = Math.max(1.0, Math.min(3.0, currentScale + delta));
-                        modalImage.style.transform = `scale(${newScale})`;
-                    }
-                });
-            }
+
             
             const multiFileInputDisplay = document.querySelector('.multi-file-input-display');
             
