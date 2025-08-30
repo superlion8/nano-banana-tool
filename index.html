@@ -872,6 +872,16 @@
         .history-reference-btn:hover {
             background: #138496;
         }
+        
+        .history-count-info {
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            color: #666;
+            font-size: 12px;
+        }
 
         @media (max-width: 768px) {
             .container {
@@ -1329,23 +1339,29 @@
             showSuccessMessage(`欢迎回来，${user.name}！`);
         }
         
-        function googleLogout() {
+                function googleLogout() {
+            // 在登出前保存当前用户的历史记录
+            if (currentUser && userHistory.length > 0) {
+                saveUserHistoryToStorage();
+                console.log('登出前已保存历史记录');
+            }
+            
             currentUser = null;
             userHistory = [];
             
             // 更新UI显示
             updateLoginUI();
             
-                            // 隐藏历史记录主标签页
-                document.getElementById('history-main-tab').style.display = 'none';
+            // 隐藏历史记录主标签页
+            document.getElementById('history-main-tab').style.display = 'none';
             
-            // 清除localStorage
+            // 清除localStorage中的用户信息，但保留历史记录
             localStorage.removeItem('nanoBananaUser');
             
-                            // 如果当前在历史记录标签页，切换到Editor标签页
-                if (document.getElementById('history-tab').classList.contains('active')) {
-                    switchMainTab('editor');
-                }
+            // 如果当前在历史记录标签页，切换到Editor标签页
+            if (document.getElementById('history-tab').classList.contains('active')) {
+                switchMainTab('editor');
+            }
             
             showSuccessMessage('已成功登出');
         }
@@ -1380,15 +1396,21 @@
         function loadUserHistory() {
             if (!currentUser) return;
             
-            // 清空历史记录，不再使用fake数据
-            userHistory = [];
+            // 首先尝试从localStorage加载历史记录
+            const hasLocalHistory = loadUserHistoryFromStorage();
+            
+            if (!hasLocalHistory) {
+                // 如果没有本地历史记录，清空数组
+                userHistory = [];
+                console.log('没有找到本地历史记录，初始化为空');
+            }
             
             // 这里应该从后端API获取用户历史记录
-            // 目前暂时为空，等待真实数据
+            // 目前暂时使用本地存储，等待后端API
             renderHistory();
         }
         
-        function renderHistory() {
+        function renderHistory(historyToRender = null) {
             const historyList = document.getElementById('history-list');
             
             if (!currentUser) {
@@ -1396,12 +1418,15 @@
                 return;
             }
             
-            if (userHistory.length === 0) {
-                historyList.innerHTML = '<div class="history-placeholder"><p>暂无生成历史记录</p></div>';
+            // 使用传入的历史记录或默认的userHistory
+            const historyData = historyToRender || userHistory;
+            
+            if (historyData.length === 0) {
+                historyList.innerHTML = '<div class="history-placeholder"><p>暂无生成历史记录</p><small>生成图像后，历史记录将显示在这里</small></div>';
                 return;
             }
             
-            const historyHTML = userHistory.map(item => `
+            const historyHTML = historyData.map(item => `
                 <div class="history-item">
                     <img src="${item.resultImage}" alt="生成结果" class="history-item-image" onclick="showImageModal('${item.resultImage}')">
                     <div class="history-item-details">
@@ -1417,6 +1442,16 @@
             `).join('');
             
             historyList.innerHTML = historyHTML;
+            
+            // 显示记录数量
+            const totalCount = userHistory.length;
+            const filteredCount = historyData.length;
+            if (totalCount !== filteredCount) {
+                const countInfo = document.createElement('div');
+                countInfo.className = 'history-count-info';
+                countInfo.innerHTML = `<small>显示 ${filteredCount} 条记录，共 ${totalCount} 条</small>`;
+                historyList.appendChild(countInfo);
+            }
         }
         
         function downloadHistoryImage(imageSrc) {
@@ -1462,13 +1497,29 @@
         }
         
         function filterHistory() {
-            // 实现历史记录过滤功能
-            console.log('过滤历史记录');
+            const filterType = document.getElementById('history-type-filter').value;
+            const searchTerm = document.getElementById('history-search').value.toLowerCase();
+            
+            let filteredHistory = userHistory;
+            
+            // 按类型过滤
+            if (filterType) {
+                filteredHistory = filteredHistory.filter(item => item.type === filterType);
+            }
+            
+            // 按搜索词过滤
+            if (searchTerm) {
+                filteredHistory = filteredHistory.filter(item => 
+                    item.prompt.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            renderHistory(filteredHistory);
         }
         
         function searchHistory() {
-            // 实现历史记录搜索功能
-            console.log('搜索历史记录');
+            // 搜索时自动触发过滤
+            filterHistory();
         }
         
         // 保存生成历史
@@ -1486,11 +1537,45 @@
             
             userHistory.unshift(historyItem); // 添加到开头
             
+            // 保存到localStorage，确保数据持久化
+            saveUserHistoryToStorage();
+            
             // 这里应该发送到后端API保存
             console.log('保存历史记录:', historyItem);
             
             // 更新显示
             renderHistory();
+        }
+        
+        // 保存用户历史记录到localStorage
+        function saveUserHistoryToStorage() {
+            if (currentUser && userHistory) {
+                const storageKey = `nanoBananaHistory_${currentUser.id}`;
+                try {
+                    localStorage.setItem(storageKey, JSON.stringify(userHistory));
+                    console.log('历史记录已保存到localStorage');
+                } catch (error) {
+                    console.error('保存历史记录到localStorage失败:', error);
+                }
+            }
+        }
+        
+        // 从localStorage加载用户历史记录
+        function loadUserHistoryFromStorage() {
+            if (currentUser) {
+                const storageKey = `nanoBananaHistory_${currentUser.id}`;
+                try {
+                    const savedHistory = localStorage.getItem(storageKey);
+                    if (savedHistory) {
+                        userHistory = JSON.parse(savedHistory);
+                        console.log('从localStorage加载历史记录:', userHistory.length, '条');
+                        return true;
+                    }
+                } catch (error) {
+                    console.error('从localStorage加载历史记录失败:', error);
+                }
+            }
+            return false;
         }
         
         // 页面加载完成后的初始化
@@ -1539,6 +1624,7 @@
                 try {
                     const user = JSON.parse(savedUser);
                     loginUser(user);
+                    console.log('已恢复用户登录状态');
                 } catch (error) {
                     console.error('解析保存的用户信息失败:', error);
                     localStorage.removeItem('nanoBananaUser');
