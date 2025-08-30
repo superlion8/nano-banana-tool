@@ -975,6 +975,8 @@
                             <textarea id="text-prompt" placeholder="请输入您想要生成图像的详细描述，例如：Create a picture of a nano banana dish in a fancy restaurant with a Gemini theme"></textarea>
                         </div>
                         <button class="generate-btn" onclick="generateFromText()">生成图像</button>
+                        <button class="debug-btn" onclick="debugLocalStorage()" style="margin-left: 10px; padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer;">调试历史</button>
+                        <button class="test-btn" onclick="addTestHistory()" style="margin-left: 10px; padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer;">添加测试记录</button>
                     </div>
 
                     <!-- 图像编辑 -->
@@ -1533,7 +1535,14 @@
         
         // 保存生成历史
         function saveToHistory(type, prompt, inputImages, resultImage) {
-            if (!currentUser) return;
+            console.log('saveToHistory 被调用:', { type, prompt, inputImages, resultImage });
+            console.log('当前用户:', currentUser);
+            console.log('当前userHistory长度:', userHistory ? userHistory.length : 'undefined');
+            
+            if (!currentUser) {
+                console.log('saveToHistory: 没有当前用户，无法保存');
+                return;
+            }
             
             const historyItem = {
                 id: 'hist_' + Date.now(),
@@ -1544,13 +1553,16 @@
                 inputImages: inputImages || []
             };
             
+            console.log('创建的历史记录项:', historyItem);
+            
             userHistory.unshift(historyItem); // 添加到开头
+            console.log('添加到userHistory后，长度变为:', userHistory.length);
             
             // 保存到localStorage，确保数据持久化
             saveUserHistoryToStorage();
             
             // 这里应该发送到后端API保存
-            console.log('保存历史记录:', historyItem);
+            console.log('保存历史记录完成:', historyItem);
             
             // 更新显示
             renderHistory();
@@ -1787,6 +1799,29 @@
             }
             console.log('当前userHistory数组长度:', userHistory ? userHistory.length : 'undefined');
             console.log('========================');
+        }
+        
+        // 测试函数：手动添加测试历史记录
+        function addTestHistory() {
+            if (!currentUser) {
+                console.log('没有登录用户，无法添加测试历史');
+                return;
+            }
+            
+            const testHistoryItem = {
+                id: 'test_' + Date.now(),
+                type: 'text-to-image',
+                prompt: '测试提示词 - ' + new Date().toLocaleString(),
+                resultImage: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+                createdAt: new Date().toISOString(),
+                inputImages: []
+            };
+            
+            console.log('添加测试历史记录:', testHistoryItem);
+            userHistory.unshift(testHistoryItem);
+            saveUserHistoryToStorage();
+            renderHistory();
+            console.log('测试历史记录已添加，当前长度:', userHistory.length);
         }
         
         // 显示成功消息
@@ -2118,9 +2153,15 @@
 
                 const data = await response.json();
                 const result = handleAPIResponse(data, 'generateFromText');
+                console.log('generateFromText: handleAPIResponse结果:', result);
+                console.log('generateFromText: currentImageData:', currentImageData);
+                
                 if (result && currentImageData) {
+                    console.log('generateFromText: 准备保存到历史记录');
                     // 保存到历史记录
                     saveToHistory('text-to-image', prompt, [], `data:image/png;base64,${currentImageData}`);
+                } else {
+                    console.log('generateFromText: 无法保存到历史记录，result:', result, 'currentImageData:', currentImageData);
                 }
             } catch (error) {
                 console.error('生成图像错误:', error);
@@ -2423,13 +2464,19 @@
 
                 
                 const result = handleAPIResponse(data, 'Multi-image generation');
+                console.log('generateFromMultiImages: handleAPIResponse结果:', result);
+                console.log('generateFromMultiImages: currentImageData:', currentImageData);
+                
                 if (result && currentImageData) {
+                    console.log('generateFromMultiImages: 准备保存到历史记录');
                     // 保存到历史记录
                     const inputImages = selectedMultiFiles.map(file => {
                         // 这里应该将文件转换为base64，为了简化，我们使用占位符
                         return 'data:image/png;base64,placeholder';
                     });
                     saveToHistory('image-edit', prompt, inputImages, `data:image/png;base64,${currentImageData}`);
+                } else {
+                    console.log('generateFromMultiImages: 无法保存到历史记录，result:', result, 'currentImageData:', currentImageData);
                 }
                 
             } catch (error) {
