@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nano Banana 图像生成与编辑工具</title>
+    
+    <!-- Supabase客户端库 -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    
     <style>
         * {
             margin: 0;
@@ -978,6 +982,7 @@
                         <button class="debug-btn" onclick="debugLocalStorage()" style="margin-left: 10px; padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer;">调试历史</button>
                         <button class="test-btn" onclick="addTestHistory()" style="margin-left: 10px; padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer;">添加测试记录</button>
                         <button class="cleanup-btn" onclick="cleanupOldHistoryData()" style="margin-left: 10px; padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer;">清理旧数据</button>
+                        <button class="supabase-info-btn" onclick="showSupabaseInfo()" style="margin-left: 10px; padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 6px; cursor: pointer;">Supabase配置</button>
                     </div>
 
                     <!-- 图像编辑 -->
@@ -1102,6 +1107,25 @@
         // 注意：JavaScript来源不要包含结尾斜杠或路径！
         const GOOGLE_CLIENT_ID = '547002648100-ktofram0al1so1n8ii436bnv49hgikfk.apps.googleusercontent.com';
         const GOOGLE_SCOPE = 'openid email profile';
+        
+        // Supabase配置
+        // 请按照以下步骤配置：
+        // 1. 访问 https://supabase.com/ 创建项目
+        // 2. 在项目设置中获取URL和anon key
+        // 3. 创建以下数据表：
+        //    - users: id, email, name, avatar_url, created_at
+        //    - history: id, user_id, type, prompt, result_image, input_images, created_at
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // 替换为你的Supabase项目URL
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // 替换为你的Supabase匿名密钥
+        
+        // 初始化Supabase客户端
+        let supabase = null;
+        if (SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('✅ Supabase客户端已初始化');
+        } else {
+            console.warn('⚠️ Supabase未配置，将使用localStorage作为备选方案');
+        }
 
         // 切换主标签页（Editor/History）
         function switchMainTab(tabId, event) {
@@ -1328,7 +1352,7 @@
             }
         }
         
-        function loginUser(user) {
+        async function loginUser(user) {
             currentUser = user;
             // 不要在这里清空历史记录，让loadUserHistory来处理
             
@@ -1338,8 +1362,14 @@
             // 显示历史记录主标签页
             document.getElementById('history-main-tab').style.display = 'inline-block';
             
+            // 同步用户信息到Supabase
+            if (supabase) {
+                console.log('同步用户信息到Supabase...');
+                await upsertUserToSupabase(user);
+            }
+            
             // 加载用户历史记录
-            loadUserHistory();
+            await loadUserHistory();
             
             // 保存登录状态到localStorage
             localStorage.setItem('nanoBananaUser', JSON.stringify(user));
@@ -1401,7 +1431,7 @@
         }
         
         // 历史记录相关函数
-        function loadUserHistory() {
+        async function loadUserHistory() {
             if (!currentUser) {
                 console.log('loadUserHistory: 没有当前用户');
                 return;
@@ -1409,7 +1439,23 @@
             
             console.log('loadUserHistory: 开始加载用户历史记录，用户ID:', currentUser.id);
             
-            // 首先尝试从localStorage加载历史记录
+            // 优先尝试从Supabase加载历史记录
+            if (supabase) {
+                console.log('loadUserHistory: 尝试从Supabase加载历史记录...');
+                try {
+                    const hasSupabaseHistory = await loadHistoryFromSupabase();
+                    if (hasSupabaseHistory) {
+                        console.log('loadUserHistory: 从Supabase加载历史记录成功，共', userHistory.length, '条');
+                        renderHistory();
+                        return;
+                    }
+                } catch (error) {
+                    console.error('loadUserHistory: Supabase加载失败，回退到localStorage:', error);
+                }
+            }
+            
+            // 如果Supabase不可用或没有数据，尝试从localStorage加载
+            console.log('loadUserHistory: 尝试从localStorage加载历史记录...');
             const hasLocalHistory = loadUserHistoryFromStorage();
             
             if (hasLocalHistory) {
@@ -1420,8 +1466,6 @@
                 console.log('loadUserHistory: 没有找到本地历史记录，初始化为空数组');
             }
             
-            // 这里应该从后端API获取用户历史记录
-            // 目前暂时使用本地存储，等待后端API
             renderHistory();
             
             console.log('loadUserHistory: 历史记录加载完成，当前userHistory长度:', userHistory.length);
@@ -1540,7 +1584,7 @@
         }
         
         // 保存生成历史
-        function saveToHistory(type, prompt, inputImages, resultImage) {
+        async function saveToHistory(type, prompt, inputImages, resultImage) {
             console.log('saveToHistory 被调用:', { type, prompt, inputImages, resultImage });
             console.log('当前用户:', currentUser);
             console.log('当前userHistory长度:', userHistory ? userHistory.length : 'undefined');
@@ -1567,7 +1611,21 @@
             // 保存到localStorage，确保数据持久化
             saveUserHistoryToStorage();
             
-            // 这里应该发送到后端API保存
+            // 同时保存到Supabase
+            if (supabase) {
+                console.log('同步历史记录到Supabase...');
+                try {
+                    const supabaseSuccess = await saveHistoryToSupabase(historyItem);
+                    if (supabaseSuccess) {
+                        console.log('历史记录已同步到Supabase');
+                    } else {
+                        console.warn('历史记录同步到Supabase失败，但已保存到localStorage');
+                    }
+                } catch (error) {
+                    console.error('Supabase同步错误:', error);
+                }
+            }
+            
             console.log('保存历史记录完成:', historyItem);
             
             // 更新显示
@@ -1857,6 +1915,112 @@
             console.log('测试历史记录已添加，当前长度:', userHistory.length);
         }
         
+        // Supabase用户管理函数
+        async function upsertUserToSupabase(user) {
+            if (!supabase) {
+                console.log('Supabase未配置，跳过用户同步');
+                return null;
+            }
+            
+            try {
+                const { data, error } = await supabase
+                    .from('users')
+                    .upsert({
+                        id: user.id,
+                        email: user.email,
+                        name: user.name,
+                        avatar_url: user.picture || user.avatar,
+                        created_at: new Date().toISOString()
+                    }, {
+                        onConflict: 'id'
+                    });
+                
+                if (error) {
+                    console.error('保存用户到Supabase失败:', error);
+                    return null;
+                }
+                
+                console.log('用户已同步到Supabase:', data);
+                return data;
+            } catch (error) {
+                console.error('Supabase用户同步错误:', error);
+                return null;
+            }
+        }
+        
+        // Supabase历史记录管理函数
+        async function saveHistoryToSupabase(historyItem) {
+            if (!supabase || !currentUser) {
+                console.log('Supabase未配置或用户未登录，跳过历史记录同步');
+                return false;
+            }
+            
+            try {
+                const { data, error } = await supabase
+                    .from('history')
+                    .insert({
+                        user_id: currentUser.id,
+                        type: historyItem.type,
+                        prompt: historyItem.prompt,
+                        result_image: historyItem.resultImage,
+                        input_images: historyItem.inputImages,
+                        created_at: historyItem.createdAt
+                    });
+                
+                if (error) {
+                    console.error('保存历史记录到Supabase失败:', error);
+                    return false;
+                }
+                
+                console.log('历史记录已同步到Supabase:', data);
+                return true;
+            } catch (error) {
+                console.error('Supabase历史记录同步错误:', error);
+                return false;
+            }
+        }
+        
+        async function loadHistoryFromSupabase() {
+            if (!supabase || !currentUser) {
+                console.log('Supabase未配置或用户未登录，跳过历史记录加载');
+                return false;
+            }
+            
+            try {
+                const { data, error } = await supabase
+                    .from('history')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .order('created_at', { ascending: false });
+                
+                if (error) {
+                    console.error('从Supabase加载历史记录失败:', error);
+                    return false;
+                }
+                
+                if (data && data.length > 0) {
+                    // 转换Supabase数据格式为本地格式
+                    userHistory = data.map(item => ({
+                        id: item.id,
+                        type: item.type,
+                        prompt: item.prompt,
+                        resultImage: item.result_image,
+                        inputImages: item.input_images || [],
+                        createdAt: item.created_at
+                    }));
+                    
+                    console.log('从Supabase加载历史记录成功，共', userHistory.length, '条');
+                    return true;
+                } else {
+                    console.log('Supabase中没有找到历史记录');
+                    return false;
+                }
+            } catch (error) {
+                console.error('Supabase历史记录加载错误:', error);
+                return false;
+            }
+        }
+        
         // 清理函数：清理localStorage中的旧测试数据
         function cleanupOldHistoryData() {
             console.log('=== 清理旧的测试数据 ===');
@@ -1894,6 +2058,20 @@
             }
             
             console.log('=== 清理完成 ===');
+        }
+        
+        // 显示Supabase配置信息
+        function showSupabaseInfo() {
+            const isConfigured = SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY';
+            
+            let message = '';
+            if (isConfigured) {
+                message = `✅ Supabase已配置\nURL: ${SUPABASE_URL}\n状态: 已连接`;
+            } else {
+                message = `⚠️ Supabase未配置\n\n请按以下步骤配置：\n1. 访问 https://supabase.com/\n2. 创建新项目\n3. 在项目设置中获取URL和anon key\n4. 更新代码中的配置\n5. 创建数据表：\n   - users: id, email, name, avatar_url, created_at\n   - history: id, user_id, type, prompt, result_image, input_images, created_at`;
+            }
+            
+            alert(message);
         }
         
         // 显示成功消息
