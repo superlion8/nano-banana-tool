@@ -303,14 +303,17 @@
 
         .modal-content {
             position: relative;
-            margin: 5% auto;
+            margin: 2% auto;
             padding: 20px;
-            width: 90%;
-            max-width: 800px;
+            width: 95%;
+            max-width: 1200px;
             background: white;
             border-radius: 15px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .close-modal {
@@ -330,9 +333,25 @@
 
         #modal-image {
             max-width: 100%;
-            max-height: 70vh;
+            max-height: 80vh;
+            width: auto;
+            height: auto;
             border-radius: 10px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            object-fit: contain;
+            transition: all 0.3s ease;
+            cursor: zoom-in;
+        }
+
+        #modal-image.zoomed {
+            cursor: zoom-out;
+            transform: scale(1.5);
+            max-width: none;
+            max-height: none;
+        }
+
+        #modal-image.zoomed:hover {
+            transform: scale(1.8);
         }
 
         .modal-actions {
@@ -342,7 +361,7 @@
             justify-content: center;
         }
 
-        .modal-download-btn, .modal-reference-btn, .modal-close-btn {
+        .modal-download-btn, .modal-reference-btn, .modal-close-btn, .modal-zoom-btn {
             padding: 10px 20px;
             border: none;
             border-radius: 8px;
@@ -380,6 +399,24 @@
         .modal-reference-btn:hover {
             background: #138496;
             transform: translateY(-1px);
+        }
+
+        .modal-zoom-btn {
+            background: #6f42c1;
+            color: white;
+        }
+
+        .modal-zoom-btn:hover {
+            background: #5a32a3;
+            transform: translateY(-1px);
+        }
+
+        .modal-zoom-btn.zoomed {
+            background: #dc3545;
+        }
+
+        .modal-zoom-btn.zoomed:hover {
+            background: #c82333;
         }
 
         .download-btn {
@@ -657,8 +694,16 @@
                 gap: 10px;
             }
 
-            .modal-download-btn, .modal-close-btn {
+            .modal-download-btn, .modal-close-btn, .modal-reference-btn, .modal-zoom-btn {
                 width: 100%;
+            }
+
+            #modal-image.zoomed {
+                transform: scale(1.2);
+            }
+
+            #modal-image.zoomed:hover {
+                transform: scale(1.4);
             }
         }
     </style>
@@ -778,6 +823,7 @@
                         <span class="close-modal" onclick="closeImageModal()">&times;</span>
                         <img id="modal-image" src="" alt="放大图像">
                         <div class="modal-actions">
+                            <button class="modal-zoom-btn" onclick="toggleImageZoom()" title="切换图像缩放">🔍 缩放</button>
                             <button class="modal-download-btn" onclick="downloadModalImage()">下载图像</button>
                             <button class="modal-reference-btn" onclick="referenceModalImage()">📎 引用图像</button>
                             <button class="modal-close-btn" onclick="closeImageModal()">关闭</button>
@@ -950,11 +996,23 @@
             const modalImage = document.getElementById('modal-image');
             
             if (modal && modalImage) {
+                // 先设置图像源
                 modalImage.src = imageSrc;
-                modal.style.display = 'block';
                 
-                // 禁止背景滚动
-                document.body.style.overflow = 'hidden';
+                // 等待图像加载完成后显示模态框
+                modalImage.onload = function() {
+                    modal.style.display = 'block';
+                    
+                    // 禁止背景滚动
+                    document.body.style.overflow = 'hidden';
+                    
+                    // 添加加载完成后的样式
+                    modalImage.style.opacity = '1';
+                };
+                
+                // 设置加载中的状态
+                modalImage.style.opacity = '0';
+                modalImage.style.transition = 'opacity 0.3s ease';
             }
         }
 
@@ -993,6 +1051,28 @@
             
             // 显示成功提示
             showSuccessMessage('图像已引用到编辑区域，请在上方输入修改提示词');
+        }
+
+        // 切换图像缩放
+        function toggleImageZoom() {
+            const modalImage = document.getElementById('modal-image');
+            const zoomBtn = document.querySelector('.modal-zoom-btn');
+            
+            if (modalImage && zoomBtn) {
+                if (modalImage.classList.contains('zoomed')) {
+                    // 取消缩放
+                    modalImage.classList.remove('zoomed');
+                    zoomBtn.classList.remove('zoomed');
+                    zoomBtn.innerHTML = '🔍 缩放';
+                    zoomBtn.title = '切换图像缩放';
+                } else {
+                    // 启用缩放
+                    modalImage.classList.add('zoomed');
+                    zoomBtn.classList.add('zoomed');
+                    zoomBtn.innerHTML = '🔍 取消缩放';
+                    zoomBtn.title = '取消图像缩放';
+                }
+            }
         }
 
         // 引用模态框中的图像
@@ -1696,6 +1776,21 @@
                     closeImageModal();
                 }
             });
+
+            // 添加鼠标滚轮缩放功能
+            const imageModal = document.getElementById('image-modal');
+            if (imageModal) {
+                imageModal.addEventListener('wheel', function(e) {
+                    e.preventDefault();
+                    const modalImage = document.getElementById('modal-image');
+                    if (modalImage && modalImage.classList.contains('zoomed')) {
+                        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                        const currentScale = parseFloat(modalImage.style.transform.replace('scale(', '').replace(')', '') || 1.5);
+                        const newScale = Math.max(1.0, Math.min(3.0, currentScale + delta));
+                        modalImage.style.transform = `scale(${newScale})`;
+                    }
+                });
+            }
             
             const multiFileInputDisplay = document.querySelector('.multi-file-input-display');
             
