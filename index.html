@@ -1495,7 +1495,9 @@
                 return;
             }
             
-            const historyHTML = historyData.map(item => `
+            const historyHTML = historyData.map(item => {
+                console.log(`渲染历史记录项: ID="${item.id}", 类型=${typeof item.id}`);
+                return `
                 <div class="history-item">
                     <img src="${item.resultImage}" alt="生成结果" class="history-item-image" onclick="showImageModal('${item.resultImage}')">
                     <div class="history-item-details">
@@ -1509,7 +1511,8 @@
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
             
             historyList.innerHTML = historyHTML;
             
@@ -2000,7 +2003,17 @@
             }
             
             try {
-                console.log('删除历史记录:', historyId);
+                console.log('=== 删除历史记录调试信息 ===');
+                console.log('要删除的historyId:', historyId);
+                console.log('当前userHistory数组:', userHistory);
+                console.log('userHistory长度:', userHistory ? userHistory.length : 'undefined');
+                
+                if (userHistory && userHistory.length > 0) {
+                    console.log('userHistory中所有项的ID:');
+                    userHistory.forEach((item, index) => {
+                        console.log(`  [${index}] ID: "${item.id}", 类型: ${typeof item.id}`);
+                    });
+                }
                 
                 // 从Supabase删除
                 if (supabase) {
@@ -2019,7 +2032,14 @@
                 }
                 
                 // 从本地数组删除
-                const index = userHistory.findIndex(item => item.id === historyId);
+                const index = userHistory.findIndex(item => {
+                    const match = item.id === historyId;
+                    console.log(`比较: "${item.id}" === "${historyId}" => ${match}`);
+                    return match;
+                });
+                
+                console.log('找到的索引:', index);
+                
                 if (index !== -1) {
                     userHistory.splice(index, 1);
                     console.log('已从本地数组删除历史记录');
@@ -2032,8 +2052,15 @@
                     
                     showSuccessMessage('历史记录已删除');
                 } else {
+                    console.error('未找到匹配的历史记录项');
+                    console.error('可能的原因:');
+                    console.error('1. historyId类型不匹配');
+                    console.error('2. userHistory数组为空或未定义');
+                    console.error('3. 历史记录项的ID格式不一致');
                     showError('未找到要删除的历史记录');
                 }
+                
+                console.log('=== 删除历史记录调试信息结束 ===');
                 
             } catch (error) {
                 console.error('删除历史记录错误:', error);
