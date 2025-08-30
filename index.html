@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nano Banana 图像生成工具</title>
+    <title>Nano Banana 图像生成与编辑工具</title>
     <style>
         * {
             margin: 0;
@@ -633,14 +633,13 @@
 </head>
 <body>
     <div class="container">
-                <h1>🍌 Nano Banana 图像生成工具</h1>
+                <h1>🍌 Nano Banana 图像生成与编辑工具</h1>
 
         <div class="main-layout">
             <div class="left-panel">
                 <div class="tabs">
                     <button class="tab-button active" onclick="switchTab('text-to-image', event)">文本生成图像</button>
-                    <button class="tab-button" onclick="switchTab('image-edit', event)">图像修改</button>
-                    <button class="tab-button" onclick="switchTab('multi-image', event)">多图生成</button>
+                    <button class="tab-button" onclick="switchTab('multi-image', event)">图像编辑</button>
                 </div>
 
         <!-- 文本生成图像 -->
@@ -652,43 +651,24 @@
             <button class="generate-btn" onclick="generateFromText()">生成图像</button>
         </div>
 
-                <!-- 图像修改 -->
-        <div id="image-edit" class="tab-content">
-            <div class="input-group">
-                <label for="edit-prompt">修改提示词</label>
-                <textarea id="edit-prompt" placeholder="请输入您想要对图像进行的修改描述，例如：Create a picture of my cat eating a nano-banana in a fancy restaurant under the Gemini constellation"></textarea>       
-            </div>
-            <div class="input-group">
-                <label for="source-image">选择源图像</label>
-                <div class="file-input-wrapper">
-                    <input type="file" id="source-image" accept="image/*" onchange="previewImage(this)">
-                    <div class="file-input-display">
-                        <span id="file-display-text">点击选择图像文件或拖拽到此处</span>
-                    </div>
-                </div>
-                <div id="image-preview" class="preview-container" style="display: none;">
-                    <img id="preview-img" class="preview-image" src="" alt="预览图像">
-                </div>
-            </div>
-            <button class="generate-btn" onclick="generateFromImage()">修改图像</button>
-        </div>
 
-        <!-- 多图生成 -->
+
+        <!-- 图像编辑 -->
         <div id="multi-image" class="tab-content">
             <div class="input-group">
-                <label for="multi-prompt">描述提示词</label>
-                <textarea id="multi-prompt" placeholder="请输入您想要基于多张图像生成新图像的详细描述，例如：Create a professional e-commerce fashion photo. Take the blue floral dress from the first image and let the woman from the second image wear it. Generate a realistic, full-body shot of the woman wearing the dress, with the lighting and shadows adjusted to match the outdoor environment."></textarea>
+                <label for="multi-prompt">编辑提示词</label>
+                <textarea id="multi-prompt" placeholder="请输入您想要对图像进行的编辑描述，例如：Create a professional e-commerce fashion photo. Take the blue floral dress from the first image and let the woman from the second image wear it. Generate a realistic, full-body shot of the woman wearing the dress, with the lighting and shadows adjusted to match the outdoor environment."></textarea>
             </div>
             <div class="input-group">
-                <label for="multi-images">添加图像 (最多3张)</label>
+                <label for="multi-images">添加图像 (1-3张)</label>
                 <div class="multi-file-input-wrapper">
                     <input type="file" id="multi-images" accept="image/*" multiple onchange="handleImageUpload(this)">
                     <div class="multi-file-input-display">
-                        <span id="multi-file-display-text">点击选择多张图像文件或拖拽到此处</span>
+                        <span id="multi-file-display-text">点击选择图像文件或拖拽到此处</span>
                     </div>
                 </div>
                 <div class="upload-hint">
-                    <small>支持JPEG、PNG格式，单张图像最大10MB</small>
+                    <small>支持JPEG、PNG格式，单张图像最大10MB。支持单张图像编辑或多张图像组合编辑</small>
                 </div>
                 <div id="multi-image-preview" class="multi-preview-container" style="display: none;">
                     <div class="preview-header">
@@ -698,7 +678,7 @@
                     <div id="multi-preview-images"></div>
                 </div>
             </div>
-            <button class="generate-btn" onclick="generateFromMultiImages()">生成图像</button>
+            <button class="generate-btn" onclick="generateFromMultiImages()">编辑图像</button>
         </div>
             </div>
 
@@ -738,7 +718,7 @@
                 <!-- 初始状态占位符 -->
                 <div id="initial-placeholder" class="initial-placeholder">
                     <div class="placeholder-icon">🎨</div>
-                    <h3>AI 图像生成</h3>
+                    <h3>AI 图像生成与编辑</h3>
                     <p>在左侧输入提示词并上传图像，<br>右侧将显示生成结果</p>
                 </div>
             </div>
@@ -800,9 +780,9 @@
                 selectedMultiFiles = [];
                 updateMultiImagePreview();
             } else {
-                // 如果切换到多图生成标签页，显示引用提示
+                // 如果切换到图像编辑标签页，显示引用提示
                 if (selectedMultiFiles.length > 0) {
-                    showSuccessMessage(`已加载 ${selectedMultiFiles.length} 张图像，您可以继续添加更多图像或直接生成`);
+                    showSuccessMessage(`已加载 ${selectedMultiFiles.length} 张图像，您可以继续添加更多图像或直接编辑`);
                 }
             }
                 
@@ -815,7 +795,7 @@
         // 页面加载完成后的初始化
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Page loaded successfully');
-            console.log('Available functions:', typeof switchTab, typeof generateFromText, typeof generateFromImage);
+            console.log('Available functions:', typeof switchTab, typeof generateFromText);
             
             // 测试标签页切换功能
             console.log('Testing tab switching functionality...');
@@ -840,21 +820,7 @@
         // 移除可能干扰的alert测试
         console.log('JavaScript functions loaded successfully');
 
-        // 预览选择的图像
-        function previewImage(input) {
-            const file = input.files[0];
-            if (file) {
-                selectedFile = file;
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('preview-img').src = e.target.result;
-                    document.getElementById('image-preview').style.display = 'block';
-                    document.getElementById('file-display-text').textContent = file.name;
-                    document.querySelector('.file-input-display').classList.add('has-file');
-                };
-                reader.readAsDataURL(file);
-            }
-        }
+
 
         // 显示加载状态
         function showLoading() {
@@ -1018,7 +984,7 @@
             addReferencedImageToMulti(currentImageData);
             
             // 显示成功提示
-            showSuccessMessage('图像已引用到多图生成区域，您可以继续添加更多图像进行下一步编辑');
+            showSuccessMessage('图像已引用到图像编辑区域，您可以继续添加更多图像进行下一步编辑');
         }
 
 
@@ -1098,25 +1064,7 @@
             }
         }
 
-        // 更新图像预览
-        function updateImagePreview(file) {
-            const previewContainer = document.getElementById('image-preview');
-            const previewImg = document.getElementById('preview-img');
-            const fileDisplay = document.querySelector('.file-input-display');
-            const fileDisplayText = document.getElementById('file-display-text');
-            
-            if (previewContainer && previewImg && fileDisplay && fileDisplayText) {
-                // 显示预览
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    previewImg.src = e.target.result;
-                    previewContainer.style.display = 'block';
-                    fileDisplayText.textContent = file.name;
-                    fileDisplay.classList.add('has-file');
-                };
-                reader.readAsDataURL(file);
-            }
-        }
+
 
         // 文件转换为base64
         function fileToBase64(file) {
@@ -1232,92 +1180,7 @@
             }
         }
 
-        // 图像修改
-        async function generateFromImage() {
-            const prompt = document.getElementById('edit-prompt').value.trim();
-            
-            if (!prompt) {
-                showError('请输入修改提示词');
-                return;
-            }
-
-            // 调试信息
-            console.log('generateFromImage called');
-            console.log('selectedFile:', selectedFile);
-            console.log('selectedFile type:', selectedFile ? selectedFile.type : 'undefined');
-            
-            if (!selectedFile) {
-                showError('请选择源图像文件');
-                return;
-            }
-
-            hideError();
-            hideResult();
-            showLoading();
-
-            try {
-                const imageBase64 = await fileToBase64(selectedFile);
-                // 确保图像格式正确，只支持JPEG和PNG
-                let mimeType = selectedFile.type;
-                if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') {
-                    mimeType = 'image/jpeg';
-                } else if (mimeType === 'image/png') {
-                    mimeType = 'image/png';
-                } else {
-                    throw new Error(`不支持的图像格式: ${mimeType}。请使用JPEG或PNG格式。`);
-                }
-                
-                // 调试信息
-                console.log('Image base64 length:', imageBase64.length);
-                console.log('MIME type:', mimeType);
-                console.log('Prompt:', prompt);
-
-                const response = await fetch(`${API_BASE}/api/edit-image`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [
-                                {
-                                    text: prompt
-                                },
-                                {
-                                    inline_data: {
-                                        mime_type: mimeType,
-                                        data: imageBase64.split(',')[1]
-                                    }
-                                }
-                            ]
-                        }]
-                    })
-                });
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('API Error Response:', errorText);
-                    let errorMessage = `HTTP错误: ${response.status}`;
-                    
-                    try {
-                        const errorData = JSON.parse(errorText);
-                        errorMessage = errorData.error?.message || errorMessage;
-                    } catch (e) {
-                        errorMessage = errorText || errorMessage;
-                    }
-                    
-                    throw new Error(errorMessage);
-                }
-
-                const data = await response.json();
-                handleAPIResponse(data, 'generateFromImage');
-            } catch (error) {
-                console.error('修改图像错误:', error);
-                showError(`修改图像失败: ${error.message}`);
-            } finally {
-                hideLoading();
-            }
-        }
+        
 
         // 下载图像
         function downloadImage() {
@@ -1525,7 +1388,7 @@
             }
         }
 
-        // 从多图生成图像
+        // 图像编辑功能
         async function generateFromMultiImages() {
             const prompt = document.getElementById('multi-prompt').value.trim();
             
@@ -1613,7 +1476,7 @@
                 
             } catch (error) {
                 console.error('Multi-image generation error:', error);
-                showError(`多图生成失败: ${error.message}`);
+                showError(`图像编辑失败: ${error.message}`);
             } finally {
                 hideLoading();
             }
