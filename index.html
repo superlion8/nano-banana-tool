@@ -1535,8 +1535,29 @@
             // 隐藏历史记录主标签页
             document.getElementById('history-main-tab').style.display = 'none';
             
-            // 清除localStorage中的用户信息
+            // 清除localStorage中的所有用户相关数据
             localStorage.removeItem('nanoBananaUser');
+            
+            // 清除当前用户的历史记录
+            if (oldUserId) {
+                const historyKey = `nanoBananaHistory_${oldUserId}`;
+                localStorage.removeItem(historyKey);
+                console.log('已清除用户历史记录:', historyKey);
+            }
+            
+            // 清除所有可能的历史记录键
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && (key.includes('nanoBananaHistory') || key.includes('nanoBananaUser'))) {
+                    keysToRemove.push(key);
+                }
+            }
+            
+            keysToRemove.forEach(key => {
+                localStorage.removeItem(key);
+                console.log('已清除localStorage键:', key);
+            });
             
             // 如果当前在历史记录标签页，切换到Editor标签页
             if (document.getElementById('history-tab').classList.contains('active')) {
@@ -1558,6 +1579,41 @@
         // 清理界面数据
         function clearAllInterfaceData() {
             console.log('清理界面数据...');
+            
+            // 清空所有输入框
+            const textInputs = document.querySelectorAll('input[type="text"], textarea');
+            textInputs.forEach(input => {
+                input.value = '';
+            });
+            
+            // 清空文件选择
+            const fileInputs = document.querySelectorAll('input[type="file"]');
+            fileInputs.forEach(input => {
+                input.value = '';
+            });
+            
+            // 清空多图选择
+            selectedMultiFiles = [];
+            updateMultiImagePreview();
+            
+            // 清空结果区域
+            const resultSection = document.querySelector('.result');
+            if (resultSection) {
+                resultSection.innerHTML = '';
+                resultSection.style.display = 'none';
+            }
+            
+            // 显示初始占位符
+            const placeholder = document.getElementById('initial-placeholder');
+            if (placeholder) {
+                placeholder.style.display = 'block';
+            }
+            
+            // 隐藏错误信息
+            hideError();
+            
+            console.log('界面数据清理完成');
+        }
             
             // 清空文本提示词
             const textPrompt = document.getElementById('text-prompt');
@@ -2257,6 +2313,14 @@
             if (savedUser) {
                 try {
                     const user = JSON.parse(savedUser);
+                    
+                    // 验证用户数据的完整性
+                    if (!user || !user.id || !user.email) {
+                        console.warn('保存的用户数据不完整，清除登录状态');
+                        localStorage.removeItem('nanoBananaUser');
+                        return;
+                    }
+                    
                     console.log('检测到保存的用户信息:', user);
                     
                     // 检查是否有其他用户的历史记录需要清理
