@@ -877,6 +877,15 @@
             background: #138496;
         }
         
+        .history-delete-btn {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .history-delete-btn:hover {
+            background: #c82333;
+        }
+        
         .history-count-info {
             text-align: center;
             margin-top: 20px;
@@ -979,11 +988,6 @@
                             <textarea id="text-prompt" placeholder="请输入您想要生成图像的详细描述，例如：Create a picture of a nano banana dish in a fancy restaurant with a Gemini theme"></textarea>
                         </div>
                         <button class="generate-btn" onclick="generateFromText()">生成图像</button>
-                        <button class="debug-btn" onclick="debugLocalStorage()" style="margin-left: 10px; padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer;">调试历史</button>
-                        <button class="test-btn" onclick="addTestHistory()" style="margin-left: 10px; padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer;">添加测试记录</button>
-                        <button class="cleanup-btn" onclick="cleanupOldHistoryData()" style="margin-left: 10px; padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer;">清理旧数据</button>
-                        <button class="supabase-info-btn" onclick="showSupabaseInfo()" style="margin-left: 10px; padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 6px; cursor: pointer;">Supabase配置</button>
-                        <button class="test-connection-btn" onclick="testSupabaseConnection()" style="margin-left: 10px; padding: 8px 16px; background: #fd7e14; color: white; border: none; border-radius: 6px; cursor: pointer;">测试连接</button>
                     </div>
 
                     <!-- 图像编辑 -->
@@ -1026,6 +1030,7 @@
                                 <option value="image-edit">图像编辑</option>
                             </select>
                             <input type="text" id="history-search" placeholder="搜索提示词..." oninput="searchHistory()">
+                            <button class="clear-all-history-btn" onclick="clearAllHistory()" style="margin-left: 10px; padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">清空所有</button>
                         </div>
                     </div>
                     <div id="history-list" class="history-list">
@@ -1500,6 +1505,7 @@
                         <div class="history-item-actions">
                             <button class="history-action-btn history-download-btn" onclick="downloadHistoryImage('${item.resultImage}')">下载</button>
                             <button class="history-action-btn history-reference-btn" onclick="referenceHistoryImage('${item.id}')">引用</button>
+                            <button class="history-action-btn history-delete-btn" onclick="deleteHistoryItem('${item.id}')" title="删除此记录">🗑️</button>
                         </div>
                     </div>
                 </div>
@@ -1872,51 +1878,7 @@
             }
         }
         
-        // 调试函数：检查localStorage状态
-        function debugLocalStorage() {
-            console.log('=== localStorage 调试信息 ===');
-            console.log('当前用户:', currentUser);
-            if (currentUser) {
-                const storageKey = `nanoBananaHistory_${currentUser.id}`;
-                console.log('历史记录存储键:', storageKey);
-                const savedData = localStorage.getItem(storageKey);
-                console.log('存储的历史记录:', savedData ? '有数据' : '无数据');
-                if (savedData) {
-                    try {
-                        const parsed = JSON.parse(savedData);
-                        console.log('解析后的历史记录数量:', parsed.length);
-                        console.log('历史记录内容:', parsed);
-                    } catch (e) {
-                        console.error('解析存储数据失败:', e);
-                    }
-                }
-            }
-            console.log('当前userHistory数组长度:', userHistory ? userHistory.length : 'undefined');
-            console.log('========================');
-        }
-        
-        // 测试函数：手动添加测试历史记录
-        function addTestHistory() {
-            if (!currentUser) {
-                console.log('没有登录用户，无法添加测试历史');
-                return;
-            }
-            
-            const testHistoryItem = {
-                id: 'test_' + Date.now(),
-                type: 'text-to-image',
-                prompt: '测试提示词 - ' + new Date().toLocaleString(),
-                resultImage: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
-                createdAt: new Date().toISOString(),
-                inputImages: []
-            };
-            
-            console.log('添加测试历史记录:', testHistoryItem);
-            userHistory.unshift(testHistoryItem);
-            saveUserHistoryToStorage();
-            renderHistory();
-            console.log('测试历史记录已添加，当前长度:', userHistory.length);
-        }
+
         
         // Supabase用户管理函数
         async function upsertUserToSupabase(user) {
@@ -2024,90 +1986,106 @@
             }
         }
         
-        // 清理函数：清理localStorage中的旧测试数据
-        function cleanupOldHistoryData() {
-            console.log('=== 清理旧的测试数据 ===');
-            const keysToRemove = [];
-            
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key && key.includes('nanoBananaHistory')) {
-                    console.log('找到历史记录键:', key);
-                    try {
-                        const data = localStorage.getItem(key);
-                        if (data) {
-                            const parsed = JSON.parse(data);
-                            console.log('  - 数据长度:', parsed.length, '条记录');
-                            if (parsed.length === 0) {
-                                console.log('  - 空数据，标记为删除');
-                                keysToRemove.push(key);
-                            }
-                        }
-                    } catch (e) {
-                        console.log('  - 数据损坏，标记为删除');
-                        keysToRemove.push(key);
-                    }
-                }
-            }
-            
-            if (keysToRemove.length > 0) {
-                console.log('准备删除以下键:', keysToRemove);
-                keysToRemove.forEach(key => {
-                    localStorage.removeItem(key);
-                    console.log('已删除:', key);
-                });
-            } else {
-                console.log('没有需要清理的数据');
-            }
-            
-            console.log('=== 清理完成 ===');
-        }
+
         
-        // 显示Supabase配置信息
-        function showSupabaseInfo() {
-            let message = '';
-            if (supabase) {
-                message = `✅ Supabase已配置\nURL: ${SUPABASE_URL}\n状态: 已连接\n\n点击"测试连接"按钮验证数据库连接`;
-            } else {
-                message = `❌ Supabase连接失败\nURL: ${SUPABASE_URL}\n请检查配置和网络连接`;
+        // 删除历史记录项
+        async function deleteHistoryItem(historyId) {
+            if (!currentUser) {
+                showError('请先登录');
+                return;
             }
             
-            alert(message);
-        }
-        
-        // 测试Supabase连接
-        async function testSupabaseConnection() {
-            if (!supabase) {
-                alert('❌ Supabase客户端未初始化');
+            if (!confirm('确定要删除这条历史记录吗？此操作不可恢复。')) {
                 return;
             }
             
             try {
-                console.log('测试Supabase连接...');
+                console.log('删除历史记录:', historyId);
                 
-                // 测试基本连接
-                const { data, error } = await supabase
-                    .from('users')
-                    .select('count')
-                    .limit(1);
-                
-                if (error) {
-                    if (error.code === 'PGRST116') {
-                        // 表不存在，这是正常的
-                        console.log('✅ Supabase连接成功，但users表不存在');
-                        alert('✅ Supabase连接成功！\n\n下一步：请在Supabase中创建以下数据表：\n\n1. users表：\n   - id (TEXT, PRIMARY KEY)\n   - email (TEXT, NOT NULL)\n   - name (TEXT)\n   - avatar_url (TEXT)\n   - created_at (TIMESTAMP)\n\n2. history表：\n   - id (SERIAL, PRIMARY KEY)\n   - user_id (TEXT, REFERENCES users(id))\n   - type (TEXT, NOT NULL)\n   - prompt (TEXT, NOT NULL)\n   - result_image (TEXT, NOT NULL)\n   - input_images (JSONB)\n   - created_at (TIMESTAMP)');
-                    } else {
-                        console.error('Supabase连接测试失败:', error);
-                        alert(`❌ Supabase连接测试失败：\n${error.message}`);
+                // 从Supabase删除
+                if (supabase) {
+                    const { error } = await supabase
+                        .from('history')
+                        .delete()
+                        .eq('id', historyId);
+                    
+                    if (error) {
+                        console.error('从Supabase删除失败:', error);
+                        showError('删除失败：' + error.message);
+                        return;
                     }
+                    
+                    console.log('已从Supabase删除历史记录');
+                }
+                
+                // 从本地数组删除
+                const index = userHistory.findIndex(item => item.id === historyId);
+                if (index !== -1) {
+                    userHistory.splice(index, 1);
+                    console.log('已从本地数组删除历史记录');
+                    
+                    // 更新localStorage
+                    saveUserHistoryToStorage();
+                    
+                    // 重新渲染历史记录
+                    renderHistory();
+                    
+                    showSuccessMessage('历史记录已删除');
                 } else {
-                    console.log('✅ Supabase连接成功，users表存在');
-                    alert('✅ Supabase连接成功！\nusers表已存在，可以开始使用。');
+                    showError('未找到要删除的历史记录');
                 }
                 
             } catch (error) {
-                console.error('Supabase连接测试错误:', error);
-                alert(`❌ Supabase连接测试错误：\n${error.message}`);
+                console.error('删除历史记录错误:', error);
+                showError('删除失败：' + error.message);
+            }
+        }
+        
+        // 清空所有历史记录
+        async function clearAllHistory() {
+            if (!currentUser) {
+                showError('请先登录');
+                return;
+            }
+            
+            if (!confirm('确定要清空所有历史记录吗？此操作不可恢复。')) {
+                return;
+            }
+            
+            try {
+                console.log('清空所有历史记录...');
+                
+                // 从Supabase删除所有记录
+                if (supabase) {
+                    const { error } = await supabase
+                        .from('history')
+                        .delete()
+                        .eq('user_id', currentUser.id);
+                    
+                    if (error) {
+                        console.error('从Supabase清空失败:', error);
+                        showError('清空失败：' + error.message);
+                        return;
+                    }
+                    
+                    console.log('已从Supabase清空所有历史记录');
+                }
+                
+                // 清空本地数组
+                userHistory = [];
+                console.log('已清空本地历史记录数组');
+                
+                // 更新localStorage
+                saveUserHistoryToStorage();
+                
+                // 重新渲染历史记录
+                renderHistory();
+                
+                showSuccessMessage('所有历史记录已清空');
+                
+            } catch (error) {
+                console.error('清空历史记录错误:', error);
+                showError('清空失败：' + error.message);
             }
         }
         
