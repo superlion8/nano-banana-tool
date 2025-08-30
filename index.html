@@ -1615,15 +1615,22 @@
             
             console.log('loadUserHistory: 开始加载用户历史记录，用户ID:', currentUser.id);
             
-            // 优先尝试从Supabase加载历史记录
+            // 每次登录都优先从Supabase加载完整的历史记录
             if (supabase) {
-                console.log('loadUserHistory: 尝试从Supabase加载历史记录...');
+                console.log('loadUserHistory: 优先从Supabase加载历史记录...');
                 try {
                     const hasSupabaseHistory = await loadHistoryFromSupabase();
                     if (hasSupabaseHistory) {
                         console.log('loadUserHistory: 从Supabase加载历史记录成功，共', userHistory.length, '条');
+                        
+                        // 同步到localStorage作为备份
+                        saveUserHistoryToStorage();
+                        console.log('已同步Supabase数据到localStorage');
+                        
                         renderHistory();
                         return;
+                    } else {
+                        console.log('Supabase中没有历史记录，尝试从localStorage加载...');
                     }
                 } catch (error) {
                     console.error('loadUserHistory: Supabase加载失败，回退到localStorage:', error);
@@ -2345,6 +2352,8 @@
             }
             
             try {
+                console.log('从Supabase加载历史记录，用户ID:', currentUser.id);
+                
                 const { data, error } = await supabase
                     .from('history')
                     .select('*')
@@ -2357,17 +2366,26 @@
                 }
                 
                 if (data && data.length > 0) {
-                    // 转换Supabase数据格式为本地格式
-                    userHistory = data.map(item => ({
-                        id: item.id,
-                        type: item.type,
-                        prompt: item.prompt,
-                        resultImage: item.result_image,
-                        inputImages: item.input_images || [],
-                        createdAt: item.created_at
-                    }));
+                    console.log('Supabase返回原始数据:', data);
+                    
+                    // 转换Supabase数据格式为本地格式，确保ID类型一致
+                    userHistory = data.map(item => {
+                        // 确保ID是字符串类型，与本地生成的ID格式保持一致
+                        const convertedItem = {
+                            id: String(item.id), // 转换为字符串
+                            type: item.type,
+                            prompt: item.prompt,
+                            resultImage: item.result_image,
+                            inputImages: item.input_images || [],
+                            createdAt: item.created_at
+                        };
+                        
+                        console.log('转换后的历史记录项:', convertedItem);
+                        return convertedItem;
+                    });
                     
                     console.log('从Supabase加载历史记录成功，共', userHistory.length, '条');
+                    console.log('转换后的userHistory:', userHistory);
                     return true;
                 } else {
                     console.log('Supabase中没有找到历史记录');
