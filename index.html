@@ -1145,19 +1145,43 @@
         // 3. 创建以下数据表：
         //    - users: id, email, name, avatar_url, created_at
         //    - history: id, user_id, type, prompt, result_image, input_images, created_at
-        const SUPABASE_URL = 'https://cvdogeigbpussfamctsu.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2ZG9nZWlnYnB1c3NmYW1jdHN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY1NjEyMjUsImV4cCI6MjA3MjEzNzIyNX0.JSY1sEK1aLaqaIp5_MTM_99XERVaDY18akQeKCDYEik';
+        // Supabase配置将从环境变量中获取
+        let SUPABASE_URL = null;
+        let SUPABASE_ANON_KEY = null;
+        
+        // 从API获取配置信息
+        async function loadConfiguration() {
+            try {
+                const response = await fetch('/api/config');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const config = await response.json();
+                SUPABASE_URL = config.supabaseUrl;
+                SUPABASE_ANON_KEY = config.supabaseAnonKey;
+                
+                console.log('配置加载成功:', { 
+                    supabaseUrl: SUPABASE_URL ? '已设置' : '未设置',
+                    supabaseAnonKey: SUPABASE_ANON_KEY ? '已设置' : '未设置'
+                });
+                
+                // 初始化Supabase客户端
+                if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    console.log('✅ Supabase客户端初始化成功');
+                } else {
+                    console.warn('⚠️ Supabase配置不完整，跳过初始化');
+                }
+                
+            } catch (error) {
+                console.error('❌ 配置加载失败:', error);
+                console.warn('⚠️ 将使用localStorage作为备选方案');
+            }
+        }
         
         // 初始化Supabase客户端
         let supabase = null;
-        try {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            console.log('✅ Supabase客户端已初始化');
-            console.log('Supabase URL:', SUPABASE_URL);
-        } catch (error) {
-            console.error('❌ Supabase客户端初始化失败:', error);
-            console.warn('⚠️ 将使用localStorage作为备选方案');
-        }
 
         // 切换主标签页（Editor/History）
         function switchMainTab(tabId, event) {
@@ -2263,6 +2287,9 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Page loaded successfully');
             console.log('Available functions:', typeof switchTab, typeof generateFromText);
+            
+            // 加载配置信息
+            loadConfiguration();
             
             // 检查Google OAuth配置
             if (GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
