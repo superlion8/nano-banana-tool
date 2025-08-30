@@ -1524,36 +1524,48 @@
             const textPrompt = document.getElementById('text-prompt');
             if (textPrompt) {
                 textPrompt.value = '';
+                console.log('已清空文本提示词');
             }
             
             const multiPrompt = document.getElementById('multi-prompt');
             if (multiPrompt) {
-                textPrompt.value = '';
+                multiPrompt.value = '';
+                console.log('已清空多图提示词');
             }
             
             // 清空图像选择
             selectedFile = null;
             selectedMultiFiles = [];
             currentImageData = null;
+            console.log('已清空图像选择');
             
             // 清空图像预览
             const imagePreview = document.getElementById('image-preview');
             if (imagePreview) {
                 imagePreview.style.display = 'none';
                 imagePreview.innerHTML = '';
+                console.log('已清空单图预览');
             }
             
             const multiImagePreview = document.getElementById('multi-image-preview');
             if (multiImagePreview) {
                 multiImagePreview.style.display = 'none';
-                document.getElementById('multi-preview-images').innerHTML = '';
-                document.getElementById('image-count').textContent = '0';
+                const multiPreviewImages = document.getElementById('multi-preview-images');
+                if (multiPreviewImages) {
+                    multiPreviewImages.innerHTML = '';
+                }
+                const imageCount = document.getElementById('image-count');
+                if (imageCount) {
+                    imageCount.textContent = '0';
+                }
+                console.log('已清空多图预览');
             }
             
             // 清空结果显示
             const resultImage = document.getElementById('result-image');
             if (resultImage) {
                 resultImage.src = '';
+                console.log('已清空结果图像');
             }
             
             // 隐藏结果区域，显示初始占位符
@@ -1562,22 +1574,57 @@
             if (resultSection && initialPlaceholder) {
                 resultSection.style.display = 'none';
                 initialPlaceholder.style.display = 'block';
+                console.log('已显示初始占位符');
             }
             
             // 隐藏加载和错误状态
             const loadingSection = document.querySelector('.loading');
             const errorSection = document.querySelector('.error');
-            if (loadingSection) loadingSection.style.display = 'none';
-            if (errorSection) errorSection.style.display = 'none';
+            if (loadingSection) {
+                loadingSection.style.display = 'none';
+                console.log('已隐藏加载状态');
+            }
+            if (errorSection) {
+                errorSection.style.display = 'none';
+                console.log('已隐藏错误状态');
+            }
             
             // 重置文件输入
             const fileInput = document.getElementById('image-input');
-            if (fileInput) fileInput.value = '';
+            if (fileInput) {
+                fileInput.value = '';
+                console.log('已重置单图文件输入');
+            }
             
             const multiFileInput = document.getElementById('multi-images');
-            if (multiFileInput) multiFileInput.value = '';
+            if (multiFileInput) {
+                multiFileInput.value = '';
+                console.log('已重置多图文件输入');
+            }
             
-            console.log('界面数据清理完成');
+            // 强制刷新界面状态
+            setTimeout(() => {
+                // 确保所有状态都已更新
+                console.log('延迟检查界面状态...');
+                
+                // 再次检查关键元素状态
+                if (textPrompt && textPrompt.value !== '') {
+                    console.log('警告：文本提示词仍未清空，强制清空');
+                    textPrompt.value = '';
+                }
+                
+                if (multiPrompt && multiPrompt.value !== '') {
+                    console.log('警告：多图提示词仍未清空，强制清空');
+                    multiPrompt.value = '';
+                }
+                
+                if (selectedMultiFiles.length > 0) {
+                    console.log('警告：多图选择仍未清空，强制清空');
+                    selectedMultiFiles = [];
+                }
+                
+                console.log('界面数据清理完成');
+            }, 100);
         }
         
         function updateLoginUI() {
@@ -1787,7 +1834,7 @@
             // 清空当前选择
             selectedMultiFiles = [];
             
-            // 将结果图像作为输入图像添加到多图选择
+            // 只引用结果图像，不引用原始输入图像
             if (historyItem.resultImage) {
                 try {
                     // 将base64转换为File对象
@@ -1810,34 +1857,19 @@
                 }
             }
             
-            // 如果有原始输入图像，也添加到多图选择
-            if (historyItem.inputImages && historyItem.inputImages.length > 0) {
-                historyItem.inputImages.forEach((imageSrc, index) => {
-                    try {
-                        // 将base64转换为File对象
-                        const base64Data = imageSrc.split(',')[1];
-                        const byteCharacters = atob(base64Data);
-                        const byteNumbers = new Array(byteCharacters.length);
-                        for (let i = 0; i < byteNumbers.length; i++) {
-                            byteNumbers[i] = byteCharacters.charCodeAt(i);
-                        }
-                        const byteArray = new Uint8Array(byteNumbers);
-                        const blob = new Blob([byteArray], { type: 'image/png' });
-                        const file = new File([blob], `referenced_input_${index + 1}.png`, { type: 'image/png' });
-                        
-                        selectedMultiFiles.push(file);
-                        console.log('已添加输入图像:', file.name);
-                    } catch (error) {
-                        console.error('转换输入图像失败:', error);
-                    }
-                });
-            }
+            // 不再添加原始输入图像，只引用结果图像
+            console.log('引用策略：只引用结果图像，不引用原始输入图像');
             
-            // 设置提示词
+            // 设置提示词（替换原有内容）
             const multiPrompt = document.getElementById('multi-prompt');
             if (multiPrompt) {
-                multiPrompt.value = historyItem.prompt;
-                console.log('已设置提示词:', historyItem.prompt);
+                // 先清空原有提示词，再设置新的
+                multiPrompt.value = '';
+                // 使用setTimeout确保清空操作完成后再设置新值
+                setTimeout(() => {
+                    multiPrompt.value = historyItem.prompt;
+                    console.log('已设置提示词:', historyItem.prompt);
+                }, 10);
             }
             
             // 更新预览
