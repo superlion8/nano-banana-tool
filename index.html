@@ -999,6 +999,11 @@
         // 4. 在"凭据"页面创建OAuth 2.0客户端ID
         // 5. 设置授权域名（包括你的开发域名）
         // 6. 将获得的客户端ID替换下面的值
+        //
+        // 🚀 Vercel部署配置：
+        // 授权JavaScript来源: https://nano-banana-tool.vercel.app
+        // 授权重定向URI: https://nano-banana-tool.vercel.app/oauth-callback.html
+        // 注意：JavaScript来源不要包含结尾斜杠或路径！
         const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID'; // 需要替换为你的Google Client ID
         const GOOGLE_SCOPE = 'openid email profile';
 
@@ -1346,6 +1351,11 @@
                 console.warn('4. 在"凭据"页面创建OAuth 2.0客户端ID');
                 console.warn('5. 设置授权域名（包括你的开发域名）');
                 console.warn('6. 将获得的客户端ID替换代码中的 YOUR_GOOGLE_CLIENT_ID');
+                console.warn('');
+                console.warn('🚀 Vercel部署配置：');
+                console.warn('授权JavaScript来源: https://nano-banana-tool.vercel.app');
+                console.warn('授权重定向URI: https://nano-banana-tool.vercel.app/oauth-callback.html');
+                console.warn('⚠️ 注意：JavaScript来源不要包含结尾斜杠或路径！');
                 
                 // 显示配置提示
                 const configWarning = document.createElement('div');
@@ -1353,7 +1363,8 @@
                 configWarning.innerHTML = `
                     <strong>⚠️ Google登录未配置</strong><br>
                     请先配置Google OAuth客户端ID才能使用登录功能<br>
-                    <small>详细配置说明请查看控制台日志</small>
+                    <small>详细配置说明请查看控制台日志</small><br>
+                    <small style="color:#e74c3c;">🚀 Vercel部署：JavaScript来源不要包含结尾斜杠！</small>
                 `;
                 document.body.appendChild(configWarning);
                 
