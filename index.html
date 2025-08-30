@@ -1817,10 +1817,10 @@
             showHistorySyncStatus();
             
             try {
-                // 优化查询：只选择必要字段，不包含图片数据
+                // 查询包含图片数据的完整记录
                 const { data, error } = await supabase
                     .from('history')
-                    .select('id, type, prompt, created_at, input_images')
+                    .select('id, type, prompt, created_at, input_images, result_image')
                     .eq('user_id', currentUser.id)
                     .order('created_at', { ascending: false })
                     .range((page - 1) * pageSize, page * pageSize - 1); // 使用分页
@@ -1832,22 +1832,15 @@
                 }
                 
                 if (data && data.length > 0) {
-                    // 转换数据格式，智能处理图片数据
-                    const newHistory = data.map(item => {
-                        // 检查localStorage中是否已有该记录的图片数据
-                        const existingItem = userHistory.find(existing => existing.id === String(item.id));
-                        const hasExistingImage = existingItem && existingItem.resultImage && existingItem.resultImage !== 'null' && existingItem.resultImage !== '';
-                        
-                        return {
-                            id: String(item.id),
-                            type: item.type,
-                            prompt: item.prompt,
-                            resultImage: hasExistingImage ? existingItem.resultImage : null, // 保留已有图片或标记为需要加载
-                            inputImages: item.input_images || [],
-                            createdAt: item.created_at,
-                            imageLoaded: hasExistingImage // 如果已有图片则标记为已加载
-                        };
-                    });
+                    // 转换数据格式，包含图片数据
+                    const newHistory = data.map(item => ({
+                        id: String(item.id),
+                        type: item.type,
+                        prompt: item.prompt,
+                        resultImage: item.result_image || null, // 直接使用Supabase中的图片数据
+                        inputImages: item.input_images || [],
+                        createdAt: item.created_at
+                    }));
                     
                     // 如果是第一页，直接替换；否则返回数据供调用者处理
                     if (page === 1) {
@@ -1859,9 +1852,6 @@
                         if (historyTab && historyTab.classList.contains('active')) {
                             renderHistory();
                             console.log('后台同步：Supabase数据已更新，共', userHistory.length, '条');
-                            
-                            // 延迟加载图片（分批加载，不阻塞UI）
-                            setTimeout(() => loadHistoryImages(newHistory), 100);
                         }
                     }
                     
@@ -2047,7 +2037,7 @@
             }
             
             const historyHTML = historyData.map(item => {
-                // 检查图片数据：优先使用localStorage中的完整数据，如果没有则标记为需要加载
+                // 检查图片数据
                 const hasImage = item.resultImage && item.resultImage !== 'null' && item.resultImage !== '';
                 const imageSrc = hasImage ? item.resultImage : '';
                 const imageClass = hasImage ? 'history-item-image' : 'history-item-image loading';
@@ -2057,7 +2047,7 @@
                 return `
                 <div class="history-item" data-history-id="${item.id}">
                     <img src="${imageSrc}" alt="生成结果" class="${imageClass}" ${clickHandler}>
-                    ${!hasImage ? '<div class="image-loading-placeholder">图片加载中...</div>' : ''}
+                    ${!hasImage ? '<div class="image-loading-placeholder">暂无图片</div>' : ''}
                     <div class="history-item-details">
                         <span class="history-item-type">${item.type === 'text-to-image' ? '文本生成图像' : '图像编辑'}</span>
                         <div class="history-item-prompt">${item.prompt}</div>
@@ -2785,7 +2775,7 @@
                 
                 const { data, error } = await supabase
                     .from('history')
-                    .select('id, type, prompt, created_at, input_images')
+                    .select('id, type, prompt, created_at, input_images, result_image')
                     .eq('user_id', currentUser.id)
                     .order('created_at', { ascending: false })
                     .limit(50); // 限制加载数量，提升性能
