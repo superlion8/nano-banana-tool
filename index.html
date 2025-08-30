@@ -1718,32 +1718,36 @@
             console.log('当前userHistory数组:', userHistory);
             console.log('userHistory长度:', userHistory ? userHistory.length : 'undefined');
             
-            if (!userHistory || userHistory.length === 0) {
-                console.error('userHistory数组为空或未定义');
-                showError('历史记录数据为空，请刷新页面重试');
-                return;
+            let historyItem = null;
+            
+            // 首先尝试在userHistory数组中查找
+            if (userHistory && userHistory.length > 0) {
+                // 显示所有历史记录项的ID，帮助调试
+                console.log('userHistory中所有项的ID:');
+                userHistory.forEach((item, index) => {
+                    console.log(`  [${index}] ID: "${item.id}", 类型: ${typeof item.id}`);
+                });
+                
+                historyItem = userHistory.find(item => {
+                    const match = item.id === historyId;
+                    console.log(`比较: "${item.id}" === "${historyId}" => ${match}`);
+                    return match;
+                });
+                
+                if (historyItem) {
+                    console.log('在userHistory数组中找到历史记录');
+                }
+            } else {
+                console.log('userHistory数组为空或未定义');
             }
             
-            // 显示所有历史记录项的ID，帮助调试
-            console.log('userHistory中所有项的ID:');
-            userHistory.forEach((item, index) => {
-                console.log(`  [${index}] ID: "${item.id}", 类型: ${typeof item.id}`);
-            });
-            
-            const historyItem = userHistory.find(item => {
-                const match = item.id === historyId;
-                console.log(`比较: "${item.id}" === "${historyId}" => ${match}`);
-                return match;
-            });
-            
+            // 如果在userHistory中没找到，尝试在localStorage中查找
             if (!historyItem) {
-                console.error('未找到匹配的历史记录项，尝试其他查找方式...');
+                console.log('在userHistory中未找到，尝试在localStorage中查找...');
+                historyItem = findHistoryInLocalStorage(historyId);
                 
-                // 尝试通过localStorage查找历史记录
-                const foundInStorage = findHistoryInLocalStorage(historyId);
-                if (foundInStorage) {
-                    console.log('在localStorage中找到历史记录:', foundInStorage);
-                    historyItem = foundInStorage;
+                if (historyItem) {
+                    console.log('在localStorage中找到历史记录:', historyItem);
                 } else {
                     console.error('所有查找方式都失败了');
                     console.error('可能的原因:');
@@ -1837,24 +1841,51 @@
                 return null;
             }
             
+            console.log('当前用户ID:', currentUser.id);
+            console.log('localStorage总键数:', localStorage.length);
+            
             // 遍历所有localStorage键，查找包含历史记录的键
+            const historyKeys = [];
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
                 if (key && key.includes('nanoBananaHistory')) {
-                    try {
-                        const historyData = localStorage.getItem(key);
-                        if (historyData) {
-                            const history = JSON.parse(historyData);
-                            // 在历史记录中查找匹配的ID
-                            const foundItem = history.find(item => item.id === historyId);
-                            if (foundItem) {
-                                console.log('在localStorage键', key, '中找到历史记录:', foundItem);
-                                return foundItem;
-                            }
+                    historyKeys.push(key);
+                    console.log('找到历史记录键:', key);
+                }
+            }
+            
+            console.log('所有历史记录键:', historyKeys);
+            
+            // 遍历每个历史记录键
+            for (const key of historyKeys) {
+                try {
+                    const historyData = localStorage.getItem(key);
+                    if (historyData) {
+                        const history = JSON.parse(historyData);
+                        console.log(`键 ${key} 包含 ${history.length} 条历史记录`);
+                        
+                        // 显示前几条记录的ID用于调试
+                        if (history.length > 0) {
+                            console.log('前3条记录的ID:');
+                            history.slice(0, 3).forEach((item, index) => {
+                                console.log(`  [${index}] ID: "${item.id}", 类型: ${typeof item.id}`);
+                            });
                         }
-                    } catch (error) {
-                        console.error('解析localStorage数据失败:', error);
+                        
+                        // 在历史记录中查找匹配的ID
+                        const foundItem = history.find(item => {
+                            const match = item.id === historyId;
+                            console.log(`比较键 ${key}: "${item.id}" === "${historyId}" => ${match}`);
+                            return match;
+                        });
+                        
+                        if (foundItem) {
+                            console.log('在localStorage键', key, '中找到历史记录:', foundItem);
+                            return foundItem;
+                        }
                     }
+                } catch (error) {
+                    console.error('解析localStorage键', key, '失败:', error);
                 }
             }
             
