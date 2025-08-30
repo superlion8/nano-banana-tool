@@ -797,11 +797,7 @@
                     <p id="error-message"></p>
                 </div>
 
-                <!-- 调试信息 (默认隐藏) -->
-                <div id="debug-info" style="display: none; background: #f8f9fa; padding: 15px; border-radius: 10px; margin: 20px 0; font-family: monospace; font-size: 12px;">
-                    <h4>调试信息</h4>
-                    <div id="debug-content"></div>
-                </div>
+
 
                 <div class="result">
                     <h3>生成结果</h3>
@@ -882,7 +878,6 @@
                 // 清除之前的结果和错误
                 hideResult();
                 hideError();
-                hideDebugInfo();
                 
                 // 隐藏成功消息
                 const successMessage = document.getElementById('success-message');
@@ -1024,19 +1019,7 @@
             }
         }
 
-        function showDebugInfo(content) {
-            const debugInfo = document.getElementById('debug-info');
-            const debugContent = document.getElementById('debug-content');
-            debugContent.innerHTML = content;
-            debugInfo.style.display = 'block';
-        }
 
-        function hideDebugInfo() {
-            const debugInfo = document.getElementById('debug-info');
-            if (debugInfo) {
-                debugInfo.style.display = 'none';
-            }
-        }
 
         // 显示图像放大模态框
         function showImageModal(imageSrc) {
@@ -1718,16 +1701,7 @@
                 
                 console.log('Multi-image generation request:', requestBody);
                 
-                // 显示调试信息
-                const debugInfo = `
-                    <strong>请求详情:</strong><br>
-                    图像数量: ${selectedMultiFiles.length}<br>
-                    图像格式: ${selectedMultiFiles.map(f => f.type).join(', ')}<br>
-                    图像大小: ${selectedMultiFiles.map(f => (f.size / 1024 / 1024).toFixed(2) + 'MB').join(', ')}<br>
-                    提示词长度: ${prompt.length} 字符<br>
-                    提示词: ${prompt.substring(0, 100)}${prompt.length > 100 ? '...' : ''}
-                `;
-                showDebugInfo(debugInfo);
+
                 
                 const response = await fetch(`${API_BASE}/api/generate-multi-image`, {
                     method: 'POST',
@@ -1743,27 +1717,12 @@
                     const errorData = data.error || {};
                     const errorMessage = errorData.message || `HTTP ${response.status}: ${response.statusText}`;
                     
-                    // 显示错误调试信息
-                    const errorDebugInfo = `
-                        <strong>错误详情:</strong><br>
-                        HTTP状态: ${response.status}<br>
-                        错误消息: ${errorMessage}<br>
-                        错误代码: ${errorData.code || 'N/A'}<br>
-                        错误详情: ${JSON.stringify(errorData, null, 2)}
-                    `;
-                    showDebugInfo(errorDebugInfo);
+
                     
                     throw new Error(errorMessage);
                 }
                 
-                // 显示成功调试信息
-                const successDebugInfo = `
-                    <strong>成功响应:</strong><br>
-                    响应状态: ${response.status}<br>
-                    响应类型: ${response.headers.get('content-type') || 'N/A'}<br>
-                    响应大小: ${JSON.stringify(data).length} 字符
-                `;
-                showDebugInfo(successDebugInfo);
+
                 
                 handleAPIResponse(data, 'Multi-image generation');
                 
