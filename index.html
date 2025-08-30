@@ -1510,7 +1510,74 @@
                 historyList.innerHTML = '<div class="history-placeholder"><p>请先登录查看历史记录</p></div>';
             }
             
+            // 清理界面：清空所有输入和显示内容
+            clearAllInterfaceData();
+            
             showSuccessMessage('已成功登出');
+        }
+        
+        // 清理界面数据
+        function clearAllInterfaceData() {
+            console.log('清理界面数据...');
+            
+            // 清空文本提示词
+            const textPrompt = document.getElementById('text-prompt');
+            if (textPrompt) {
+                textPrompt.value = '';
+            }
+            
+            const multiPrompt = document.getElementById('multi-prompt');
+            if (multiPrompt) {
+                textPrompt.value = '';
+            }
+            
+            // 清空图像选择
+            selectedFile = null;
+            selectedMultiFiles = [];
+            currentImageData = null;
+            
+            // 清空图像预览
+            const imagePreview = document.getElementById('image-preview');
+            if (imagePreview) {
+                imagePreview.style.display = 'none';
+                imagePreview.innerHTML = '';
+            }
+            
+            const multiImagePreview = document.getElementById('multi-image-preview');
+            if (multiImagePreview) {
+                multiImagePreview.style.display = 'none';
+                document.getElementById('multi-preview-images').innerHTML = '';
+                document.getElementById('image-count').textContent = '0';
+            }
+            
+            // 清空结果显示
+            const resultImage = document.getElementById('result-image');
+            if (resultImage) {
+                resultImage.src = '';
+            }
+            
+            // 隐藏结果区域，显示初始占位符
+            const resultSection = document.querySelector('.result');
+            const initialPlaceholder = document.getElementById('initial-placeholder');
+            if (resultSection && initialPlaceholder) {
+                resultSection.style.display = 'none';
+                initialPlaceholder.style.display = 'block';
+            }
+            
+            // 隐藏加载和错误状态
+            const loadingSection = document.querySelector('.loading');
+            const errorSection = document.querySelector('.error');
+            if (loadingSection) loadingSection.style.display = 'none';
+            if (errorSection) errorSection.style.display = 'none';
+            
+            // 重置文件输入
+            const fileInput = document.getElementById('image-input');
+            if (fileInput) fileInput.value = '';
+            
+            const multiFileInput = document.getElementById('multi-images');
+            if (multiFileInput) multiFileInput.value = '';
+            
+            console.log('界面数据清理完成');
         }
         
         function updateLoginUI() {
@@ -1647,7 +1714,12 @@
         
         function referenceHistoryImage(historyId) {
             const historyItem = userHistory.find(item => item.id === historyId);
-            if (!historyItem) return;
+            if (!historyItem) {
+                showError('未找到要引用的历史记录');
+                return;
+            }
+            
+            console.log('引用历史记录:', historyItem);
             
             // 切换到Editor标签页的图像编辑功能
             switchMainTab('editor');
@@ -1656,11 +1728,11 @@
             // 清空当前选择
             selectedMultiFiles = [];
             
-            // 如果有输入图像，添加到多图选择
-            if (historyItem.inputImages && historyItem.inputImages.length > 0) {
-                historyItem.inputImages.forEach((imageSrc, index) => {
+            // 将结果图像作为输入图像添加到多图选择
+            if (historyItem.resultImage) {
+                try {
                     // 将base64转换为File对象
-                    const base64Data = imageSrc.split(',')[1];
+                    const base64Data = historyItem.resultImage.split(',')[1];
                     const byteCharacters = atob(base64Data);
                     const byteNumbers = new Array(byteCharacters.length);
                     for (let i = 0; i < byteNumbers.length; i++) {
@@ -1668,19 +1740,55 @@
                     }
                     const byteArray = new Uint8Array(byteNumbers);
                     const blob = new Blob([byteArray], { type: 'image/png' });
-                    const file = new File([blob], `referenced_image_${index + 1}.png`, { type: 'image/png' });
+                    const file = new File([blob], `referenced_result_${Date.now()}.png`, { type: 'image/png' });
                     
                     selectedMultiFiles.push(file);
+                    console.log('已添加结果图像作为输入:', file.name);
+                } catch (error) {
+                    console.error('转换结果图像失败:', error);
+                    showError('引用图像失败，请重试');
+                    return;
+                }
+            }
+            
+            // 如果有原始输入图像，也添加到多图选择
+            if (historyItem.inputImages && historyItem.inputImages.length > 0) {
+                historyItem.inputImages.forEach((imageSrc, index) => {
+                    try {
+                        // 将base64转换为File对象
+                        const base64Data = imageSrc.split(',')[1];
+                        const byteCharacters = atob(base64Data);
+                        const byteNumbers = new Array(byteCharacters.length);
+                        for (let i = 0; i < byteNumbers.length; i++) {
+                            byteNumbers[i] = byteCharacters.charCodeAt(i);
+                        }
+                        const byteArray = new Uint8Array(byteNumbers);
+                        const blob = new Blob([byteArray], { type: 'image/png' });
+                        const file = new File([blob], `referenced_input_${index + 1}.png`, { type: 'image/png' });
+                        
+                        selectedMultiFiles.push(file);
+                        console.log('已添加输入图像:', file.name);
+                    } catch (error) {
+                        console.error('转换输入图像失败:', error);
+                    }
                 });
             }
             
             // 设置提示词
-            document.getElementById('multi-prompt').value = historyItem.prompt;
+            const multiPrompt = document.getElementById('multi-prompt');
+            if (multiPrompt) {
+                multiPrompt.value = historyItem.prompt;
+                console.log('已设置提示词:', historyItem.prompt);
+            }
             
             // 更新预览
             updateMultiImagePreview();
             
-            showSuccessMessage('已引用历史记录，您可以继续编辑或生成新图像');
+            // 显示成功消息
+            const imageCount = selectedMultiFiles.length;
+            showSuccessMessage(`已引用历史记录，共${imageCount}张图像，您可以继续编辑或生成新图像`);
+            
+            console.log('引用完成，当前选择的图像数量:', selectedMultiFiles.length);
         }
         
         function filterHistory() {
