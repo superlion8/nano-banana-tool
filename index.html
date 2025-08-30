@@ -1250,7 +1250,7 @@
             }
         }
         
-        // Google登录相关函数
+                // Google登录相关函数
         function googleLogin() {
             // 检查是否已经登录
             if (currentUser) {
@@ -1266,6 +1266,19 @@
             }
             
             try {
+                // 检查浏览器兼容性
+                const userAgent = navigator.userAgent.toLowerCase();
+                const isChrome = userAgent.includes('chrome') && !userAgent.includes('edg') && !userAgent.includes('opera');
+                
+                if (!isChrome) {
+                    console.warn('检测到非Chrome浏览器，Google登录可能不稳定');
+                    // 显示浏览器兼容性提示，但允许用户尝试
+                    const shouldContinue = confirm('检测到非Chrome浏览器。Google登录在非Chrome浏览器中可能不稳定，是否仍要尝试？\n\n建议使用Chrome浏览器以获得最佳体验。');
+                    if (!shouldContinue) {
+                        return;
+                    }
+                }
+                
                 // 使用Google Sign-In API获取用户信息
                 // 这种方式可以直接获取用户的邮箱、姓名、头像等信息
                 
@@ -1312,7 +1325,7 @@
                          data-size="large"
                          data-logo_alignment="left">
                     </div>
-                    <button onclick="closeGoogleSignInModal()" style="margin-top: 20px; padding: 10px 20px; border: none; border-radius: 8px; background: #6c757d; color: white; cursor: pointer;">取消</button>
+                    <button onclick="closeGoogleSignInModal()" style="margin-top: 20px; padding: 10px 20px; border: none; border-radius: 8px; background: #6c757d; color: white; cursor: pointer;">取消</button>        
                 `;
                 
                 googleSignInButton.appendChild(signInContent);
@@ -1334,17 +1347,78 @@
                 return;
             }
             
+            // 检查浏览器兼容性
+            const userAgent = navigator.userAgent.toLowerCase();
+            const isChrome = userAgent.includes('chrome') && !userAgent.includes('edg') && !userAgent.includes('opera');
+            const isFirefox = userAgent.includes('firefox');
+            const isSafari = userAgent.includes('safari') && !userAgent.includes('chrome');
+            const isEdge = userAgent.includes('edg');
+            
+            console.log('浏览器检测:', { isChrome, isFirefox, isSafari, isEdge, userAgent });
+            
+            // 对于非Chrome浏览器，提供更详细的错误信息
+            if (!isChrome) {
+                console.warn('检测到非Chrome浏览器，Google登录可能不稳定');
+            }
+            
             const script = document.createElement('script');
             script.src = 'https://accounts.google.com/gsi/client';
             script.async = true;
             script.defer = true;
             script.onload = function() {
                 console.log('Google Sign-In API 加载完成');
+                
+                // 检查API是否正确加载
+                if (window.google && window.google.accounts) {
+                    console.log('Google Sign-In API 初始化成功');
+                } else {
+                    console.error('Google Sign-In API 加载后初始化失败');
+                    showError('Google登录服务初始化失败，请尝试刷新页面或使用Chrome浏览器');
+                }
             };
             script.onerror = function() {
                 console.error('Google Sign-In API 加载失败');
-                showError('Google登录服务加载失败，请重试');
+                
+                let errorMessage = 'Google登录服务加载失败，请重试';
+                if (!isChrome) {
+                    errorMessage = 'Google登录服务加载失败。建议使用Chrome浏览器，或检查网络连接。';
+                }
+                
+                // 显示错误信息并添加重试按钮
+                showErrorWithRetry(errorMessage, () => {
+                    console.log('用户选择重试Google登录');
+                    // 移除旧的错误信息
+                    hideError();
+                    // 重新尝试登录
+                    setTimeout(() => googleLogin(), 1000);
+                });
             };
+            
+            // 设置超时处理
+            const timeout = setTimeout(() => {
+                if (!window.google || !window.google.accounts) {
+                    console.error('Google Sign-In API 加载超时');
+                    let errorMessage = 'Google登录服务加载超时，请重试';
+                    if (!isChrome) {
+                        errorMessage = 'Google登录服务加载超时。建议使用Chrome浏览器，或检查网络连接。';
+                    }
+                    showError(errorMessage);
+                }
+            }, 10000); // 10秒超时
+            
+            script.onload = function() {
+                clearTimeout(timeout);
+                console.log('Google Sign-In API 加载完成');
+                
+                // 检查API是否正确加载
+                if (window.google && window.google.accounts) {
+                    console.log('Google Sign-In API 初始化成功');
+                } else {
+                    console.error('Google Sign-In API 加载后初始化失败');
+                    showError('Google登录服务初始化失败，请尝试刷新页面或使用Chrome浏览器');
+                }
+            };
+            
             document.head.appendChild(script);
         }
         
@@ -2315,6 +2389,41 @@
         function showError(message) {
             document.getElementById('error-message').textContent = message;
             document.querySelector('.error').classList.add('show');
+        }
+        
+        // 显示带重试按钮的错误信息
+        function showErrorWithRetry(message, retryCallback) {
+            const errorDiv = document.querySelector('.error');
+            const errorMessage = document.getElementById('error-message');
+            
+            // 创建错误信息HTML，包含重试按钮
+            errorMessage.innerHTML = `
+                <div style="margin-bottom: 15px;">${message}</div>
+                <button onclick="retryGoogleLogin()" style="
+                    padding: 8px 16px; 
+                    background: #007bff; 
+                    color: white; 
+                    border: none; 
+                    border-radius: 4px; 
+                    cursor: pointer; 
+                    font-size: 14px;
+                    margin-right: 10px;
+                ">重试</button>
+                <button onclick="hideError()" style="
+                    padding: 8px 16px; 
+                    background: #6c757d; 
+                    color: white; 
+                    border: none; 
+                    border-radius: 4px; 
+                    cursor: pointer; 
+                    font-size: 14px;
+                ">关闭</button>
+            `;
+            
+            // 存储重试回调函数
+            window.retryGoogleLogin = retryCallback;
+            
+            errorDiv.classList.add('show');
         }
 
         // 显示加载消息
