@@ -584,6 +584,216 @@
             background: #f0f4ff;
         }
 
+        /* 头部容器样式 */
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .user-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .google-login-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 20px;
+            background: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(66, 133, 244, 0.3);
+        }
+
+        .google-login-btn:hover {
+            background: #3367d6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(66, 133, 244, 0.4);
+        }
+
+        .google-icon {
+            width: 18px;
+            height: 18px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 16px;
+            background: #f8f9fa;
+            border-radius: 25px;
+            border: 2px solid #e9ecef;
+        }
+
+        .user-avatar img {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .user-email {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .logout-btn {
+            padding: 6px 12px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background: #c82333;
+            transform: translateY(-1px);
+        }
+
+        /* 历史记录样式 */
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .history-filters {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .history-filters select,
+        .history-filters input {
+            padding: 8px 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .history-filters input {
+            min-width: 200px;
+        }
+
+        .history-list {
+            min-height: 200px;
+        }
+
+        .history-placeholder {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .history-item {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #e9ecef;
+        }
+
+        .history-item-image {
+            width: 120px;
+            height: 120px;
+            border-radius: 8px;
+            object-fit: cover;
+            cursor: pointer;
+        }
+
+        .history-item-details {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .history-item-type {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #667eea;
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .history-item-prompt {
+            font-size: 14px;
+            color: #333;
+            line-height: 1.4;
+        }
+
+        .history-item-date {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .history-item-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: auto;
+        }
+
+        .history-action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .history-download-btn {
+            background: #28a745;
+            color: white;
+        }
+
+        .history-download-btn:hover {
+            background: #218838;
+        }
+
+        .history-reference-btn {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .history-reference-btn:hover {
+            background: #138496;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 20px;
@@ -633,13 +843,34 @@
 </head>
 <body>
     <div class="container">
-                <h1>🍌 Nano Banana 图像生成与编辑工具</h1>
+                <div class="header-container">
+                    <h1>🍌 Nano Banana 图像生成与编辑工具</h1>
+                    <div class="user-section">
+                        <div id="login-section" class="login-section">
+                            <button id="google-login-btn" class="google-login-btn" onclick="googleLogin()">
+                                <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" class="google-icon">
+                                使用Google账号登录
+                            </button>
+                        </div>
+                        <div id="user-info" class="user-info" style="display: none;">
+                            <div class="user-avatar">
+                                <img id="user-avatar-img" src="" alt="用户头像">
+                            </div>
+                            <div class="user-details">
+                                <span id="user-name" class="user-name"></span>
+                                <span id="user-email" class="user-email"></span>
+                            </div>
+                            <button id="logout-btn" class="logout-btn" onclick="googleLogout()">登出</button>
+                        </div>
+                    </div>
+                </div>
 
         <div class="main-layout">
             <div class="left-panel">
                 <div class="tabs">
                     <button class="tab-button active" onclick="switchTab('text-to-image', event)">文本生成图像</button>
                     <button class="tab-button" onclick="switchTab('multi-image', event)">图像编辑</button>
+                    <button class="tab-button" onclick="switchTab('history', event)" id="history-tab" style="display: none;">生成历史</button>
                 </div>
 
         <!-- 文本生成图像 -->
@@ -679,6 +910,26 @@
                 </div>
             </div>
             <button class="generate-btn" onclick="generateFromMultiImages()">编辑图像</button>
+        </div>
+
+        <!-- 生成历史 -->
+        <div id="history" class="tab-content">
+            <div class="history-header">
+                <h3>生成历史记录</h3>
+                <div class="history-filters">
+                    <select id="history-type-filter" onchange="filterHistory()">
+                        <option value="">全部类型</option>
+                        <option value="text-to-image">文本生成图像</option>
+                        <option value="image-edit">图像编辑</option>
+                    </select>
+                    <input type="text" id="history-search" placeholder="搜索提示词..." oninput="searchHistory()">
+                </div>
+            </div>
+            <div id="history-list" class="history-list">
+                <div class="history-placeholder">
+                    <p>登录后查看您的生成历史记录</p>
+                </div>
+            </div>
         </div>
             </div>
 
@@ -735,6 +986,14 @@
         let currentImageData = null;
         let selectedFile = null;
         let selectedMultiFiles = []; // 多图选择的文件数组
+        
+        // Google登录相关变量
+        let currentUser = null;
+        let userHistory = [];
+        
+        // Google OAuth 2.0 配置
+        const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID'; // 需要替换为你的Google Client ID
+        const GOOGLE_SCOPE = 'openid email profile';
 
         // 切换标签页
         function switchTab(tabId, event) {
@@ -792,10 +1051,260 @@
             }
         }
         
+        // Google登录相关函数
+        function googleLogin() {
+            // 检查是否已经登录
+            if (currentUser) {
+                console.log('用户已登录:', currentUser);
+                return;
+            }
+            
+            // 创建Google OAuth 2.0 授权URL
+            const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+                `client_id=${GOOGLE_CLIENT_ID}&` +
+                `redirect_uri=${encodeURIComponent(window.location.origin + '/oauth-callback.html')}&` +
+                `scope=${encodeURIComponent(GOOGLE_SCOPE)}&` +
+                `response_type=code&` +
+                `access_type=offline&` +
+                `prompt=consent`;
+            
+            // 打开授权窗口
+            const authWindow = window.open(authUrl, 'googleAuth', 
+                'width=500,height=600,scrollbars=yes,resizable=yes');
+            
+            // 监听授权结果
+            window.addEventListener('message', function(event) {
+                if (event.origin !== window.location.origin) return;
+                
+                if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
+                    handleGoogleAuthSuccess(event.data.code);
+                    authWindow.close();
+                }
+            });
+        }
+        
+        function handleGoogleAuthSuccess(authCode) {
+            // 这里应该发送authCode到后端换取用户信息
+            // 为了演示，我们模拟登录成功
+            console.log('Google授权成功，授权码:', authCode);
+            
+            // 模拟用户信息（实际应该从后端获取）
+            const mockUser = {
+                id: 'user_' + Date.now(),
+                email: 'user@example.com',
+                name: '测试用户',
+                avatar: 'https://via.placeholder.com/32x32/4285f4/ffffff?text=U',
+                googleId: 'google_' + Date.now()
+            };
+            
+            loginUser(mockUser);
+        }
+        
+        function loginUser(user) {
+            currentUser = user;
+            userHistory = []; // 清空历史记录
+            
+            // 更新UI显示
+            updateLoginUI();
+            
+            // 显示历史记录标签页
+            document.getElementById('history-tab').style.display = 'inline-block';
+            
+            // 加载用户历史记录
+            loadUserHistory();
+            
+            // 保存登录状态到localStorage
+            localStorage.setItem('nanoBananaUser', JSON.stringify(user));
+            
+            showSuccessMessage(`欢迎回来，${user.name}！`);
+        }
+        
+        function googleLogout() {
+            currentUser = null;
+            userHistory = [];
+            
+            // 更新UI显示
+            updateLoginUI();
+            
+            // 隐藏历史记录标签页
+            document.getElementById('history-tab').style.display = 'none';
+            
+            // 清除localStorage
+            localStorage.removeItem('nanoBananaUser');
+            
+            // 如果当前在历史记录标签页，切换到文本生成图像
+            if (document.getElementById('history').classList.contains('active')) {
+                switchTab('text-to-image');
+            }
+            
+            showSuccessMessage('已成功登出');
+        }
+        
+        function updateLoginUI() {
+            const loginSection = document.getElementById('login-section');
+            const userInfo = document.getElementById('user-info');
+            
+            if (currentUser) {
+                loginSection.style.display = 'none';
+                userInfo.style.display = 'flex';
+                
+                document.getElementById('user-avatar-img').src = currentUser.avatar;
+                document.getElementById('user-name').textContent = currentUser.name;
+                document.getElementById('user-email').textContent = currentUser.email;
+            } else {
+                loginSection.style.display = 'block';
+                userInfo.style.display = 'none';
+            }
+        }
+        
+        // 历史记录相关函数
+        function loadUserHistory() {
+            if (!currentUser) return;
+            
+            // 这里应该从后端API获取用户历史记录
+            // 为了演示，我们使用模拟数据
+            userHistory = [
+                {
+                    id: 'hist_1',
+                    type: 'text-to-image',
+                    prompt: 'Create a picture of a nano banana dish in a fancy restaurant',
+                    resultImage: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+                    createdAt: new Date(Date.now() - 86400000).toISOString(),
+                    inputImages: []
+                },
+                {
+                    id: 'hist_2',
+                    type: 'image-edit',
+                    prompt: 'Make the background more colorful',
+                    resultImage: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+                    createdAt: new Date(Date.now() - 172800000).toISOString(),
+                    inputImages: ['data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==']
+                }
+            ];
+            
+            renderHistory();
+        }
+        
+        function renderHistory() {
+            const historyList = document.getElementById('history-list');
+            
+            if (!currentUser) {
+                historyList.innerHTML = '<div class="history-placeholder"><p>请先登录查看历史记录</p></div>';
+                return;
+            }
+            
+            if (userHistory.length === 0) {
+                historyList.innerHTML = '<div class="history-placeholder"><p>暂无生成历史记录</p></div>';
+                return;
+            }
+            
+            const historyHTML = userHistory.map(item => `
+                <div class="history-item">
+                    <img src="${item.resultImage}" alt="生成结果" class="history-item-image" onclick="showImageModal('${item.resultImage}')">
+                    <div class="history-item-details">
+                        <span class="history-item-type">${item.type === 'text-to-image' ? '文本生成图像' : '图像编辑'}</span>
+                        <div class="history-item-prompt">${item.prompt}</div>
+                        <div class="history-item-date">${new Date(item.createdAt).toLocaleString()}</div>
+                        <div class="history-item-actions">
+                            <button class="history-action-btn history-download-btn" onclick="downloadHistoryImage('${item.resultImage}')">下载</button>
+                            <button class="history-action-btn history-reference-btn" onclick="referenceHistoryImage('${item.id}')">引用</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            historyList.innerHTML = historyHTML;
+        }
+        
+        function downloadHistoryImage(imageSrc) {
+            downloadImageFromSrc(imageSrc);
+        }
+        
+        function referenceHistoryImage(historyId) {
+            const historyItem = userHistory.find(item => item.id === historyId);
+            if (!historyItem) return;
+            
+            // 切换到图像编辑标签页
+            switchTab('multi-image');
+            
+            // 清空当前选择
+            selectedMultiFiles = [];
+            
+            // 如果有输入图像，添加到多图选择
+            if (historyItem.inputImages && historyItem.inputImages.length > 0) {
+                historyItem.inputImages.forEach((imageSrc, index) => {
+                    // 将base64转换为File对象
+                    const base64Data = imageSrc.split(',')[1];
+                    const byteCharacters = atob(base64Data);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let i = 0; i < byteNumbers.length; i++) {
+                        byteNumbers[i] = byteCharacters.charCodeAt(i);
+                    }
+                    const byteArray = new Uint8Array(byteNumbers);
+                    const blob = new Blob([byteArray], { type: 'image/png' });
+                    const file = new File([blob], `referenced_image_${index + 1}.png`, { type: 'image/png' });
+                    
+                    selectedMultiFiles.push(file);
+                });
+            }
+            
+            // 设置提示词
+            document.getElementById('multi-prompt').value = historyItem.prompt;
+            
+            // 更新预览
+            updateMultiImagePreview();
+            
+            showSuccessMessage('已引用历史记录，您可以继续编辑或生成新图像');
+        }
+        
+        function filterHistory() {
+            // 实现历史记录过滤功能
+            console.log('过滤历史记录');
+        }
+        
+        function searchHistory() {
+            // 实现历史记录搜索功能
+            console.log('搜索历史记录');
+        }
+        
+        // 保存生成历史
+        function saveToHistory(type, prompt, inputImages, resultImage) {
+            if (!currentUser) return;
+            
+            const historyItem = {
+                id: 'hist_' + Date.now(),
+                type: type,
+                prompt: prompt,
+                resultImage: resultImage,
+                createdAt: new Date().toISOString(),
+                inputImages: inputImages || []
+            };
+            
+            userHistory.unshift(historyItem); // 添加到开头
+            
+            // 这里应该发送到后端API保存
+            console.log('保存历史记录:', historyItem);
+            
+            // 更新显示
+            renderHistory();
+        }
+        
         // 页面加载完成后的初始化
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Page loaded successfully');
             console.log('Available functions:', typeof switchTab, typeof generateFromText);
+            
+            // 检查是否有保存的登录状态
+            const savedUser = localStorage.getItem('nanoBananaUser');
+            if (savedUser) {
+                try {
+                    const user = JSON.parse(savedUser);
+                    loginUser(user);
+                } catch (error) {
+                    console.error('解析保存的用户信息失败:', error);
+                    localStorage.removeItem('nanoBananaUser');
+                }
+            }
             
             // 测试标签页切换功能
             console.log('Testing tab switching functionality...');
@@ -1171,7 +1680,11 @@
                 }
 
                 const data = await response.json();
-                handleAPIResponse(data, 'generateFromText');
+                const result = handleAPIResponse(data, 'generateFromText');
+                if (result && currentImageData) {
+                    // 保存到历史记录
+                    saveToHistory('text-to-image', prompt, [], `data:image/png;base64,${currentImageData}`);
+                }
             } catch (error) {
                 console.error('生成图像错误:', error);
                 showError(`生成图像失败: ${error.message}`);
@@ -1472,7 +1985,15 @@
                 
 
                 
-                handleAPIResponse(data, 'Multi-image generation');
+                const result = handleAPIResponse(data, 'Multi-image generation');
+                if (result && currentImageData) {
+                    // 保存到历史记录
+                    const inputImages = selectedMultiFiles.map(file => {
+                        // 这里应该将文件转换为base64，为了简化，我们使用占位符
+                        return 'data:image/png;base64,placeholder';
+                    });
+                    saveToHistory('image-edit', prompt, inputImages, `data:image/png;base64,${currentImageData}`);
+                }
                 
             } catch (error) {
                 console.error('Multi-image generation error:', error);
