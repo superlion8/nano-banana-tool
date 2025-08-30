@@ -1717,6 +1717,7 @@
             console.log('要引用的historyId:', historyId);
             console.log('当前userHistory数组:', userHistory);
             console.log('userHistory长度:', userHistory ? userHistory.length : 'undefined');
+            console.log('当前用户:', currentUser);
             
             let historyItem = null;
             
@@ -1738,7 +1739,17 @@
                     console.log('在userHistory数组中找到历史记录');
                 }
             } else {
-                console.log('userHistory数组为空或未定义');
+                console.log('userHistory数组为空或未定义，尝试重新加载...');
+                // 尝试重新加载历史记录
+                loadUserHistoryFromStorage();
+                if (userHistory && userHistory.length > 0) {
+                    console.log('重新加载后userHistory长度:', userHistory.length);
+                    // 再次尝试查找
+                    historyItem = userHistory.find(item => item.id === historyId);
+                    if (historyItem) {
+                        console.log('重新加载后在userHistory中找到历史记录');
+                    }
+                }
             }
             
             // 如果在userHistory中没找到，尝试在localStorage中查找
@@ -1844,7 +1855,43 @@
             console.log('当前用户ID:', currentUser.id);
             console.log('localStorage总键数:', localStorage.length);
             
-            // 遍历所有localStorage键，查找包含历史记录的键
+            // 优先查找当前用户的历史记录键
+            const currentUserKey = `nanoBananaHistory_${currentUser.id}`;
+            console.log('当前用户的历史记录键:', currentUserKey);
+            
+            // 首先尝试从当前用户的键中查找
+            try {
+                const currentUserHistory = localStorage.getItem(currentUserKey);
+                if (currentUserHistory) {
+                    const history = JSON.parse(currentUserHistory);
+                    console.log(`当前用户键包含 ${history.length} 条历史记录`);
+                    
+                    if (history.length > 0) {
+                        console.log('前3条记录的ID:');
+                        history.slice(0, 3).forEach((item, index) => {
+                            console.log(`  [${index}] ID: "${item.id}", 类型: ${typeof item.id}`);
+                        });
+                        
+                        const foundItem = history.find(item => {
+                            const match = item.id === historyId;
+                            console.log(`比较当前用户键: "${item.id}" === "${historyId}" => ${match}`);
+                            return match;
+                        });
+                        
+                        if (foundItem) {
+                            console.log('在当前用户键中找到历史记录:', foundItem);
+                            return foundItem;
+                        }
+                    }
+                } else {
+                    console.log('当前用户键中没有历史记录数据');
+                }
+            } catch (error) {
+                console.error('解析当前用户历史记录失败:', error);
+            }
+            
+            // 如果当前用户键中没找到，遍历所有历史记录键（用于调试）
+            console.log('在当前用户键中未找到，检查所有历史记录键...');
             const historyKeys = [];
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
@@ -1856,13 +1903,15 @@
             
             console.log('所有历史记录键:', historyKeys);
             
-            // 遍历每个历史记录键
+            // 遍历每个历史记录键（仅用于调试，不返回其他用户的数据）
             for (const key of historyKeys) {
+                if (key === currentUserKey) continue; // 跳过当前用户键
+                
                 try {
                     const historyData = localStorage.getItem(key);
                     if (historyData) {
                         const history = JSON.parse(historyData);
-                        console.log(`键 ${key} 包含 ${history.length} 条历史记录`);
+                        console.log(`键 ${key} 包含 ${history.length} 条历史记录（其他用户）`);
                         
                         // 显示前几条记录的ID用于调试
                         if (history.length > 0) {
@@ -1872,7 +1921,7 @@
                             });
                         }
                         
-                        // 在历史记录中查找匹配的ID
+                        // 在历史记录中查找匹配的ID（仅用于调试）
                         const foundItem = history.find(item => {
                             const match = item.id === historyId;
                             console.log(`比较键 ${key}: "${item.id}" === "${historyId}" => ${match}`);
@@ -1880,8 +1929,9 @@
                         });
                         
                         if (foundItem) {
-                            console.log('在localStorage键', key, '中找到历史记录:', foundItem);
-                            return foundItem;
+                            console.log('在其他用户键中找到匹配的历史记录（数据隔离问题）:', foundItem);
+                            console.log('⚠️ 警告：这可能表明数据隔离有问题');
+                            // 不返回其他用户的数据，保持数据隔离
                         }
                     }
                 } catch (error) {
