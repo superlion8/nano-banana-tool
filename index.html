@@ -302,10 +302,13 @@
             border-radius: 0;
             text-align: center;
             display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
 
         .result.show {
             display: block;
+            opacity: 1;
         }
 
         .result-image-container {
@@ -1860,17 +1863,8 @@
             // 不再添加原始输入图像，只引用结果图像
             console.log('引用策略：只引用结果图像，不引用原始输入图像');
             
-            // 设置提示词（替换原有内容）
-            const multiPrompt = document.getElementById('multi-prompt');
-            if (multiPrompt) {
-                // 先清空原有提示词，再设置新的
-                multiPrompt.value = '';
-                // 使用setTimeout确保清空操作完成后再设置新值
-                setTimeout(() => {
-                    multiPrompt.value = historyItem.prompt;
-                    console.log('已设置提示词:', historyItem.prompt);
-                }, 10);
-            }
+            // 不填充提示词，让用户自己输入
+            console.log('引用策略：只引用图像，不填充提示词，用户需要自己输入');
             
             // 更新预览
             updateMultiImagePreview();
@@ -2310,6 +2304,44 @@
             }
         }
         
+        // 显示生成状态提示
+        function showGenerationStatus(message) {
+            // 创建或更新生成状态提示
+            let statusDiv = document.getElementById('generation-status');
+            if (!statusDiv) {
+                statusDiv = document.createElement('div');
+                statusDiv.id = 'generation-status';
+                statusDiv.style.cssText = `
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: rgba(0, 0, 0, 0.8);
+                    color: white;
+                    padding: 20px 30px;
+                    border-radius: 10px;
+                    z-index: 10001;
+                    font-size: 16px;
+                    text-align: center;
+                    min-width: 200px;
+                `;
+                document.body.appendChild(statusDiv);
+            }
+            
+            statusDiv.textContent = message;
+            statusDiv.style.display = 'block';
+            console.log('显示生成状态:', message);
+        }
+        
+        // 隐藏生成状态提示
+        function hideGenerationStatus() {
+            const statusDiv = document.getElementById('generation-status');
+            if (statusDiv) {
+                statusDiv.style.display = 'none';
+                console.log('隐藏生成状态提示');
+            }
+        }
+        
 
         
         // Supabase用户管理函数
@@ -2614,25 +2646,72 @@
 
         // 显示结果
         function showResult(imageData) {
-            currentImageData = imageData;
-            document.getElementById('result-image').src = `data:image/png;base64,${imageData}`;
-            document.querySelector('.result').classList.add('show');
+            console.log('showResult called with imageData:', imageData ? 'has data' : 'no data');
             
-            // 隐藏占位符
+            currentImageData = imageData;
+            
+            const resultImage = document.getElementById('result-image');
+            const resultDiv = document.querySelector('.result');
             const placeholder = document.getElementById('initial-placeholder');
+            
+            console.log('Elements found:', {
+                resultImage: !!resultImage,
+                resultDiv: !!resultDiv,
+                placeholder: !!placeholder
+            });
+            
+            if (resultImage) {
+                resultImage.src = `data:image/png;base64,${imageData}`;
+                console.log('已设置result-image的src');
+            } else {
+                console.error('未找到result-image元素');
+            }
+            
+            if (resultDiv) {
+                resultDiv.classList.add('show');
+                console.log('已添加show类到result div');
+            } else {
+                console.error('未找到result div元素');
+            }
+            
             if (placeholder) {
                 placeholder.style.display = 'none';
+                console.log('已隐藏占位符');
+            } else {
+                console.error('未找到占位符元素');
             }
+            
+            console.log('showResult完成，当前状态:', {
+                resultDivDisplay: resultDiv ? resultDiv.style.display : 'N/A',
+                resultDivClasses: resultDiv ? resultDiv.className : 'N/A',
+                placeholderDisplay: placeholder ? placeholder.style.display : 'N/A'
+            });
         }
 
         // 隐藏结果
         function hideResult() {
-            document.querySelector('.result').classList.remove('show');
+            console.log('hideResult called');
             
-            // 显示占位符
+            const resultDiv = document.querySelector('.result');
             const placeholder = document.getElementById('initial-placeholder');
+            
+            console.log('Elements found:', {
+                resultDiv: !!resultDiv,
+                placeholder: !!placeholder
+            });
+            
+            if (resultDiv) {
+                resultDiv.classList.remove('show');
+                console.log('已移除show类从result div');
+            } else {
+                console.error('未找到result div元素');
+            }
+            
             if (placeholder) {
                 placeholder.style.display = 'block';
+                console.log('已显示占位符');
+            } else {
+                console.error('未找到占位符元素');
             }
         }
 
@@ -2875,6 +2954,9 @@
             hideError();
             hideResult();
             showLoading();
+            
+            // 显示生成状态提示
+            showGenerationStatus('正在生成图像，请稍候...');
 
             try {
                 const response = await fetch(`${API_BASE}/api/generate-image`, {
@@ -2924,6 +3006,7 @@
                 showError(`生成图像失败: ${error.message}`);
             } finally {
                 hideLoading();
+                hideGenerationStatus();
             }
         }
 
@@ -3158,6 +3241,9 @@
             hideError();
             hideResult();
             
+            // 显示生成状态提示
+            showGenerationStatus('正在编辑图像，请稍候...');
+            
             try {
                 // 准备请求数据
                 const contents = [];
@@ -3240,6 +3326,7 @@
                 showError(`图像编辑失败: ${error.message}`);
             } finally {
                 hideLoading();
+                hideGenerationStatus();
             }
         }
 
