@@ -1341,9 +1341,12 @@
                 const payload = JSON.parse(atob(response.credential.split('.')[1]));
                 console.log('解码的用户信息:', payload);
                 
-                // 创建用户对象
+                // 创建用户对象 - 使用稳定的邮箱哈希作为ID，确保同一邮箱每次登录都是相同ID
+                const emailHash = btoa(payload.email).replace(/[^a-zA-Z0-9]/g, '');
+                const stableUserId = `google_${emailHash}`;
+                
                 const googleUser = {
-                    id: `google_${btoa(payload.email).replace(/[^a-zA-Z0-9]/g, '')}_${Date.now()}`,
+                    id: stableUserId,
                     email: payload.email,
                     name: payload.name || payload.email.split('@')[0],
                     avatar: payload.picture,
@@ -1365,6 +1368,55 @@
             }
         }
         
+        // 检查是否有相同邮箱的现有用户数据
+        function checkExistingUserData(email) {
+            console.log('检查邮箱的现有用户数据:', email);
+            
+            // 检查localStorage中是否有相同邮箱的用户
+            const savedUser = localStorage.getItem('nanoBananaUser');
+            if (savedUser) {
+                try {
+                    const user = JSON.parse(savedUser);
+                    if (user.email === email) {
+                        console.log('找到localStorage中相同邮箱的用户:', user);
+                        return user;
+                    }
+                } catch (error) {
+                    console.error('解析保存的用户信息失败:', error);
+                }
+            }
+            
+            // 检查是否有相同邮箱的历史记录
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.includes('nanoBananaHistory')) {
+                    try {
+                        const historyData = localStorage.getItem(key);
+                        if (historyData) {
+                            const history = JSON.parse(historyData);
+                            // 如果历史记录中有数据，说明这个用户之前登录过
+                            if (history.length > 0) {
+                                // 尝试从key中提取邮箱信息
+                                const keyParts = key.split('_');
+                                if (keyParts.length >= 2) {
+                                    const potentialEmail = atob(keyParts[1]);
+                                    if (potentialEmail === email) {
+                                        console.log('找到相同邮箱的历史记录，用户ID:', keyParts[1]);
+                                        return { id: keyParts[1] };
+                                    }
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.error('检查历史记录失败:', error);
+                    }
+                }
+            }
+            
+            console.log('没有找到相同邮箱的现有用户数据');
+            return null;
+        }
+        
 
         
 
@@ -1374,6 +1426,15 @@
         async function loginUser(user) {
             console.log('=== 用户登录 ===');
             console.log('登录用户信息:', user);
+            
+            // 检查是否有相同邮箱的用户数据
+            const existingUserData = checkExistingUserData(user.email);
+            if (existingUserData) {
+                console.log('找到相同邮箱的现有用户数据:', existingUserData);
+                // 合并用户数据，保持历史记录
+                user = { ...existingUserData, ...user };
+                console.log('合并后的用户数据:', user);
+            }
             
             // 如果之前有其他用户登录，先清理
             if (currentUser && currentUser.id !== user.id) {
