@@ -766,20 +766,10 @@
             </div>
             <div class="input-group">
                 <label for="multi-images">添加图像 (最多3张)</label>
-                <div class="upload-modes">
-                    <label class="upload-mode-option">
-                        <input type="radio" name="upload-mode" value="single" checked onchange="switchUploadMode()">
-                        <span>单张上传</span>
-                    </label>
-                    <label class="upload-mode-option">
-                        <input type="radio" name="upload-mode" value="multiple" onchange="switchUploadMode()">
-                        <span>多张上传</span>
-                    </label>
-                </div>
                 <div class="multi-file-input-wrapper">
-                    <input type="file" id="multi-images" accept="image/*" onchange="handleImageUpload(this)">
+                    <input type="file" id="multi-images" accept="image/*" multiple onchange="handleImageUpload(this)">
                     <div class="multi-file-input-display">
-                        <span id="multi-file-display-text">点击选择图像文件或拖拽到此处</span>
+                        <span id="multi-file-display-text">点击选择多张图像文件或拖拽到此处</span>
                     </div>
                 </div>
                 <div class="upload-hint">
@@ -916,16 +906,6 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Page loaded successfully');
             console.log('Available functions:', typeof switchTab, typeof generateFromText, typeof generateFromImage);
-            
-            // 测试基本功能
-            const testButton = document.createElement('button');
-            testButton.textContent = '测试按钮';
-            testButton.style.cssText = 'position:fixed;top:10px;right:10px;z-index:9999;padding:10px;background:red;color:white;border:none;border-radius:5px;';
-            testButton.onclick = function() {
-                alert('JavaScript 工作正常！');
-                console.log('Test button clicked');
-            };
-            document.body.appendChild(testButton);
             
             // 测试标签页切换功能
             console.log('Testing tab switching functionality...');
@@ -1543,86 +1523,14 @@
         });
 
         // 多图上传相关变量
-        let currentUploadMode = 'single'; // 'single' 或 'multiple'
+        let currentUploadMode = 'multiple'; // 固定为多图模式
 
-        // 切换上传模式
-        function switchUploadMode() {
-            const singleMode = document.querySelector('input[name="upload-mode"][value="single"]');
-            const multipleMode = document.querySelector('input[name="upload-mode"][value="multiple"]');
-            
-            if (singleMode.checked) {
-                currentUploadMode = 'single';
-                document.getElementById('multi-images').removeAttribute('multiple');
-                document.getElementById('multi-file-display-text').textContent = '点击选择图像文件或拖拽到此处';
-            } else if (multipleMode.checked) {
-                currentUploadMode = 'multiple';
-                document.getElementById('multi-images').setAttribute('multiple', '');
-                document.getElementById('multi-file-display-text').textContent = '点击选择多张图像文件或拖拽到此处';
-            }
-        }
-
-        // 处理图像上传（根据模式选择不同的处理方式）
+        // 处理图像上传（多图模式）
         function handleImageUpload(input) {
-            if (currentUploadMode === 'single') {
-                addSingleImage(input);
-            } else {
-                addMultipleImages(input);
-            }
+            addMultipleImages(input);
         }
 
-        // 添加单张图像
-        function addSingleImage(input) {
-            const file = input.files[0];
-            
-            if (!file) {
-                return;
-            }
-            
-            // 验证文件格式
-            if (!file.type.startsWith('image/')) {
-                alert(`文件 ${file.name} 不是有效的图像文件`);
-                input.value = '';
-                return;
-            }
-            
-            // 只允许JPEG和PNG格式
-            if (file.type !== 'image/jpeg' && file.type !== 'image/jpg' && file.type !== 'image/png') {
-                alert(`文件 ${file.name} 格式不支持。请使用JPEG或PNG格式。`);
-                input.value = '';
-                return;
-            }
-            
-            // 检查文件大小（限制为10MB）
-            if (file.size > 10 * 1024 * 1024) {
-                alert(`文件 ${file.name} 太大。请选择小于10MB的图像。`);
-                input.value = '';
-                return;
-            }
-            
-            // 检查是否已达到最大数量
-            if (selectedMultiFiles.length >= 3) {
-                alert('已达到最大图像数量限制（3张）');
-                input.value = '';
-                return;
-            }
-            
-            // 检查是否已存在同名文件
-            const existingFile = selectedMultiFiles.find(f => f.name === file.name);
-            if (existingFile) {
-                alert(`文件 ${file.name} 已存在，请选择其他文件`);
-                input.value = '';
-                return;
-            }
-            
-            // 添加文件到数组
-            selectedMultiFiles.push(file);
-            
-            // 更新预览
-            updateMultiImagePreview();
-            
-            // 清空input值，允许重复选择同一文件
-            input.value = '';
-        }
+
 
         // 添加多张图像
         function addMultipleImages(input) {
@@ -1725,7 +1633,7 @@
             } else {
                 previewContainer.style.display = 'none';
                 fileDisplay.classList.remove('has-files');
-                fileDisplayText.textContent = '点击选择图像文件或拖拽到此处';
+                fileDisplayText.textContent = '点击选择多张图像文件或拖拽到此处';
             }
         }
 
@@ -1923,24 +1831,13 @@
                     const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
                     
                     if (files.length > 0) {
-                        // 根据当前模式处理拖拽的文件
-                        if (currentUploadMode === 'single') {
-                            // 单张模式：只处理第一张图像
-                            const file = files[0];
-                            if (selectedMultiFiles.length < 3) {
-                                processDroppedFile(file);
-                            } else {
+                        // 多图模式：处理所有图像
+                        for (const file of files) {
+                            if (selectedMultiFiles.length >= 3) {
                                 alert('已达到最大图像数量限制（3张）');
+                                break;
                             }
-                        } else {
-                            // 多张模式：处理所有图像
-                            for (const file of files) {
-                                if (selectedMultiFiles.length >= 3) {
-                                    alert('已达到最大图像数量限制（3张）');
-                                    break;
-                                }
-                                processDroppedFile(file);
-                            }
+                            processDroppedFile(file);
                         }
                         
                         // 更新预览
