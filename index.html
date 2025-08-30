@@ -2677,26 +2677,30 @@
             
             currentImageData = imageData;
             
-            const resultImage = document.getElementById('result-image');
             const resultDiv = document.querySelector('.result');
             const placeholder = document.getElementById('initial-placeholder');
             
             console.log('Elements found:', {
-                resultImage: !!resultImage,
                 resultDiv: !!resultDiv,
                 placeholder: !!placeholder
             });
             
-            if (resultImage) {
-                resultImage.src = `data:image/png;base64,${imageData}`;
-                console.log('已设置result-image的src');
-            } else {
-                console.error('未找到result-image元素');
-            }
-            
             if (resultDiv) {
+                // 恢复结果区域的原始HTML内容
+                resultDiv.innerHTML = `
+                    <h3>生成结果</h3>
+                    <div class="result-image-container">
+                        <img id="result-image" src="data:image/png;base64,${imageData}" alt="生成的图像" onclick="showImageModal(this.src)" class="clickable-image">
+                        <div class="image-hint">点击图像可放大查看</div>
+                    </div>
+                    <div class="result-actions">
+                        <button class="download-btn" onclick="downloadImage()">下载图像</button>
+                        <button class="reference-btn" onclick="referenceImage()" title="引用此图像进行下一次编辑">📎 引用图像</button>
+                    </div>
+                `;
+                
                 resultDiv.classList.add('show');
-                console.log('已添加show类到result div');
+                console.log('已恢复结果区域HTML并添加show类');
             } else {
                 console.error('未找到result div元素');
             }
@@ -2822,6 +2826,13 @@
             
             // 清空当前多图选择
             selectedMultiFiles = [];
+            
+            // 清空提示词
+            const multiPrompt = document.getElementById('multi-prompt');
+            if (multiPrompt) {
+                multiPrompt.value = '';
+                console.log('已清空图像编辑提示词');
+            }
             
             // 将引用的图像添加到多图选择中
             addReferencedImageToMulti(currentImageData);
@@ -2983,7 +2994,7 @@
             showLoading();
             
             // 显示生成状态提示
-            showGenerationStatus('正在生成图像，请稍候...');
+            showGenerationStatus('正在生成图像');
 
             try {
                 const response = await fetch(`${API_BASE}/api/generate-image`, {
@@ -3269,7 +3280,7 @@
             hideResult();
             
             // 显示生成状态提示
-            showGenerationStatus('正在编辑图像，请稍候...');
+            showGenerationStatus('正在生成图像');
             
             try {
                 // 准备请求数据
