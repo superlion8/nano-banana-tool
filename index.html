@@ -268,32 +268,7 @@
             box-shadow: none;
         }
 
-        .loading {
-            display: none;
-            text-align: center;
-            margin: 0 0 20px 0;
-            padding: 20px;
-        }
 
-        .loading.show {
-            display: block;
-        }
-
-        .spinner {
-            display: inline-block;
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 10px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
 
         .result {
             margin-top: 0;
@@ -1074,11 +1049,6 @@
             </div>
 
             <div class="right-panel">
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <p>正在生成图像，请稍候...</p>
-                </div>
-
                 <div class="error">
                     <p id="error-message"></p>
                 </div>
@@ -1608,13 +1578,8 @@
                 console.log('已显示初始占位符');
             }
             
-            // 隐藏加载和错误状态
-            const loadingSection = document.querySelector('.loading');
+            // 隐藏错误状态
             const errorSection = document.querySelector('.error');
-            if (loadingSection) {
-                loadingSection.style.display = 'none';
-                console.log('已隐藏加载状态');
-            }
             if (errorSection) {
                 errorSection.style.display = 'none';
                 console.log('已隐藏错误状态');
@@ -2279,7 +2244,7 @@
 
         // 显示加载状态
         function showLoading() {
-            document.querySelector('.loading').classList.add('show');
+            // 禁用所有生成按钮
             document.querySelectorAll('.generate-btn').forEach(btn => {
                 btn.disabled = true;
             });
@@ -2287,7 +2252,7 @@
 
         // 隐藏加载状态
         function hideLoading() {
-            document.querySelector('.loading').classList.remove('show');
+            // 启用所有生成按钮
             document.querySelectorAll('.generate-btn').forEach(btn => {
                 btn.disabled = false;
             });
