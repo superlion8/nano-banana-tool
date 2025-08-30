@@ -426,6 +426,12 @@
             <p id="error-message"></p>
         </div>
 
+        <!-- 调试信息 -->
+        <div id="debug-info" style="display: none; background: #f8f9fa; padding: 15px; border-radius: 10px; margin: 20px 0; font-family: monospace; font-size: 12px;">
+            <h4>调试信息</h4>
+            <div id="debug-content"></div>
+        </div>
+
         <div class="result">
             <h3>生成结果</h3>
             <img id="result-image" src="" alt="生成的图像">
@@ -463,6 +469,7 @@
             // 清除之前的结果和错误
             hideResult();
             hideError();
+            hideDebugInfo();
         }
 
         // 预览选择的图像
@@ -520,14 +527,24 @@
             document.querySelector('.result').classList.remove('show');
         }
 
+        function showDebugInfo(content) {
+            const debugInfo = document.getElementById('debug-info');
+            const debugContent = document.getElementById('debug-content');
+            debugContent.innerHTML = content;
+            debugInfo.style.display = 'block';
+        }
+
+        function hideDebugInfo() {
+            document.getElementById('debug-info').style.display = 'none';
+        }
+
         // 文件转换为base64
         function fileToBase64(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.readAsDataURL(file);
                 reader.onload = () => {
-                    const base64 = reader.result.split(',')[1];
-                    resolve(base64);
+                    resolve(reader.result);
                 };
                 reader.onerror = error => reject(error);
             });
@@ -660,7 +677,15 @@
 
             try {
                 const imageBase64 = await fileToBase64(selectedFile);
-                const mimeType = selectedFile.type;
+                // 确保图像格式正确，只支持JPEG和PNG
+                let mimeType = selectedFile.type;
+                if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') {
+                    mimeType = 'image/jpeg';
+                } else if (mimeType === 'image/png') {
+                    mimeType = 'image/png';
+                } else {
+                    throw new Error(`不支持的图像格式: ${mimeType}。请使用JPEG或PNG格式。`);
+                }
                 
                 // 调试信息
                 console.log('Image base64 length:', imageBase64.length);
@@ -681,7 +706,7 @@
                                 {
                                     inline_data: {
                                         mime_type: mimeType,
-                                        data: imageBase64
+                                        data: imageBase64.split(',')[1]
                                     }
                                 }
                             ]
@@ -787,6 +812,29 @@
                 return;
             }
             
+            // 验证文件格式
+            for (const file of files) {
+                if (!file.type.startsWith('image/')) {
+                    alert(`文件 ${file.name} 不是有效的图像文件`);
+                    input.value = '';
+                    return;
+                }
+                
+                // 只允许JPEG和PNG格式
+                if (file.type !== 'image/jpeg' && file.type !== 'image/jpg' && file.type !== 'image/png') {
+                    alert(`文件 ${file.name} 格式不支持。请使用JPEG或PNG格式。`);
+                    input.value = '';
+                    return;
+                }
+                
+                // 检查文件大小（限制为10MB）
+                if (file.size > 10 * 1024 * 1024) {
+                    alert(`文件 ${file.name} 太大。请选择小于10MB的图像。`);
+                    input.value = '';
+                    return;
+                }
+            }
+            
             selectedMultiFiles = files;
             const previewContainer = document.getElementById('multi-image-preview');
             const previewImages = document.getElementById('multi-preview-images');
@@ -874,9 +922,19 @@
                 // 添加图像
                 for (const file of selectedMultiFiles) {
                     const base64Data = await fileToBase64(file);
+                    // 确保图像格式正确，只支持JPEG和PNG
+                    let mimeType = file.type;
+                    if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') {
+                        mimeType = 'image/jpeg';
+                    } else if (mimeType === 'image/png') {
+                        mimeType = 'image/png';
+                    } else {
+                        throw new Error(`不支持的图像格式: ${mimeType}。请使用JPEG或PNG格式。`);
+                    }
+                    
                     contents.push({
                         inline_data: {
-                            mime_type: file.type,
+                            mime_type: mimeType,
                             data: base64Data.split(',')[1]
                         }
                     });
@@ -895,6 +953,17 @@
                 
                 console.log('Multi-image generation request:', requestBody);
                 
+                // 显示调试信息
+                const debugInfo = `
+                    <strong>请求详情:</strong><br>
+                    图像数量: ${selectedMultiFiles.length}<br>
+                    图像格式: ${selectedMultiFiles.map(f => f.type).join(', ')}<br>
+                    图像大小: ${selectedMultiFiles.map(f => (f.size / 1024 / 1024).toFixed(2) + 'MB').join(', ')}<br>
+                    提示词长度: ${prompt.length} 字符<br>
+                    提示词: ${prompt.substring(0, 100)}${prompt.length > 100 ? '...' : ''}
+                `;
+                showDebugInfo(debugInfo);
+                
                 const response = await fetch('/api/generate-multi-image', {
                     method: 'POST',
                     headers: {
@@ -906,8 +975,30 @@
                 const data = await response.json();
                 
                 if (!response.ok) {
-                    throw new Error(data.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+                    const errorData = data.error || {};
+                    const errorMessage = errorData.message || `HTTP ${response.status}: ${response.statusText}`;
+                    
+                    // 显示错误调试信息
+                    const errorDebugInfo = `
+                        <strong>错误详情:</strong><br>
+                        HTTP状态: ${response.status}<br>
+                        错误消息: ${errorMessage}<br>
+                        错误代码: ${errorData.code || 'N/A'}<br>
+                        错误详情: ${JSON.stringify(errorData, null, 2)}
+                    `;
+                    showDebugInfo(errorDebugInfo);
+                    
+                    throw new Error(errorMessage);
                 }
+                
+                // 显示成功调试信息
+                const successDebugInfo = `
+                    <strong>成功响应:</strong><br>
+                    响应状态: ${response.status}<br>
+                    响应类型: ${response.headers.get('content-type') || 'N/A'}<br>
+                    响应大小: ${JSON.stringify(data).length} 字符
+                `;
+                showDebugInfo(successDebugInfo);
                 
                 handleAPIResponse(data, 'Multi-image generation');
                 
@@ -946,6 +1037,19 @@
                     }
                     
                     if (files.length > 0) {
+                        // 验证文件格式和大小
+                        for (const file of files) {
+                            if (file.type !== 'image/jpeg' && file.type !== 'image/jpg' && file.type !== 'image/png') {
+                                alert(`文件 ${file.name} 格式不支持。请使用JPEG或PNG格式。`);
+                                return;
+                            }
+                            
+                            if (file.size > 10 * 1024 * 1024) {
+                                alert(`文件 ${file.name} 太大。请选择小于10MB的图像。`);
+                                return;
+                            }
+                        }
+                        
                         selectedMultiFiles = files;
                         const input = document.getElementById('multi-images');
                         

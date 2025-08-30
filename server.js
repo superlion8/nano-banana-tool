@@ -137,6 +137,15 @@ app.post('/api/generate-multi-image', async (req, res) => {
 
         console.log(`Processing multi-image generation with ${imageParts.length} images and ${textParts.length} text parts`);
         
+        // 记录请求详情用于调试
+        console.log('Request details:', {
+            model: MODEL,
+            imageCount: imageParts.length,
+            textCount: textParts.length,
+            imageTypes: imageParts.map(part => part.inline_data.mime_type),
+            textLength: textParts.map(part => part.text.length)
+        });
+        
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
             method: 'POST',
             headers: {
