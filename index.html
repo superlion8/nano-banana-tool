@@ -263,12 +263,113 @@
             display: block;
         }
 
+        .result-image-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
         .result img {
             max-width: 100%;
             height: auto;
             border-radius: 10px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .result img:hover {
+            transform: scale(1.02);
+        }
+
+        .image-hint {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        /* 图像放大模态框样式 */
+        .image-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            position: relative;
+            margin: 5% auto;
+            padding: 20px;
+            width: 90%;
+            max-width: 800px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        .close-modal {
+            position: absolute;
+            right: 20px;
+            top: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #aaa;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .close-modal:hover {
+            color: #333;
+        }
+
+        #modal-image {
+            max-width: 100%;
+            max-height: 70vh;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .modal-download-btn, .modal-close-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .modal-download-btn {
+            background: #28a745;
+            color: white;
+        }
+
+        .modal-download-btn:hover {
+            background: #218838;
+            transform: translateY(-1px);
+        }
+
+        .modal-close-btn {
+            background: #6c757d;
+            color: white;
+        }
+
+        .modal-close-btn:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
         }
 
         .download-btn {
@@ -492,6 +593,21 @@
             .tab-button {
                 margin-bottom: 5px;
             }
+
+            .modal-content {
+                margin: 10% auto;
+                width: 95%;
+                padding: 15px;
+            }
+
+            .modal-actions {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .modal-download-btn, .modal-close-btn {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -586,7 +702,7 @@
                     <p id="error-message"></p>
                 </div>
 
-                <!-- 调试信息 -->
+                <!-- 调试信息 (默认隐藏) -->
                 <div id="debug-info" style="display: none; background: #f8f9fa; padding: 15px; border-radius: 10px; margin: 20px 0; font-family: monospace; font-size: 12px;">
                     <h4>调试信息</h4>
                     <div id="debug-content"></div>
@@ -594,9 +710,24 @@
 
                 <div class="result">
                     <h3>生成结果</h3>
-                    <img id="result-image" src="" alt="生成的图像">
+                    <div class="result-image-container">
+                        <img id="result-image" src="" alt="生成的图像" onclick="showImageModal(this.src)" class="clickable-image">
+                        <div class="image-hint">点击图像可放大查看</div>
+                    </div>
                     <br>
                     <button class="download-btn" onclick="downloadImage()">下载图像</button>
+                </div>
+
+                <!-- 图像放大模态框 -->
+                <div id="image-modal" class="image-modal">
+                    <div class="modal-content">
+                        <span class="close-modal" onclick="closeImageModal()">&times;</span>
+                        <img id="modal-image" src="" alt="放大图像">
+                        <div class="modal-actions">
+                            <button class="modal-download-btn" onclick="downloadModalImage()">下载图像</button>
+                            <button class="modal-close-btn" onclick="closeImageModal()">关闭</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 初始状态占位符 -->
@@ -723,6 +854,40 @@
 
         function hideDebugInfo() {
             document.getElementById('debug-info').style.display = 'none';
+        }
+
+        // 显示图像放大模态框
+        function showImageModal(imageSrc) {
+            const modal = document.getElementById('image-modal');
+            const modalImage = document.getElementById('modal-image');
+            
+            if (modal && modalImage) {
+                modalImage.src = imageSrc;
+                modal.style.display = 'block';
+                
+                // 禁止背景滚动
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        // 关闭图像放大模态框
+        function closeImageModal() {
+            const modal = document.getElementById('image-modal');
+            
+            if (modal) {
+                modal.style.display = 'none';
+                
+                // 恢复背景滚动
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        // 下载模态框中的图像
+        function downloadModalImage() {
+            const modalImage = document.getElementById('modal-image');
+            if (modalImage && modalImage.src) {
+                downloadImageFromSrc(modalImage.src);
+            }
         }
 
         // 文件转换为base64
@@ -933,9 +1098,20 @@
                 return;
             }
 
+            downloadImageFromSrc(`data:image/png;base64,${currentImageData}`);
+        }
+
+        // 通用图像下载函数
+        function downloadImageFromSrc(imageSrc) {
+            if (!imageSrc) {
+                showError('没有可下载的图像');
+                return;
+            }
+
             const link = document.createElement('a');
-            link.href = `data:image/png;base64,${currentImageData}`;
+            link.href = imageSrc;
             link.download = `nano_banana_generated_${Date.now()}.png`;
+
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -1316,6 +1492,23 @@
         document.addEventListener('DOMContentLoaded', function() {
             // 初始化上传模式
             switchUploadMode();
+            
+            // 添加模态框外部点击关闭功能
+            const imageModal = document.getElementById('image-modal');
+            if (imageModal) {
+                imageModal.addEventListener('click', function(e) {
+                    if (e.target === imageModal) {
+                        closeImageModal();
+                    }
+                });
+            }
+            
+            // 添加ESC键关闭模态框功能
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeImageModal();
+                }
+            });
             
             const multiFileInputDisplay = document.querySelector('.multi-file-input-display');
             
