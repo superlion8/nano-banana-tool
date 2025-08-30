@@ -777,7 +777,7 @@
                 </div>
                 <div id="multi-image-preview" class="multi-preview-container" style="display: none;">
                     <div class="preview-header">
-                        <span class="image-count">已添加 <span id="image-count">0</span> 张图像</span>
+                        <span class="image-count">已添加 <span id="image-count">0</span> 张图像，点击可继续上传</span>
                         <button class="clear-all-btn" onclick="clearAllImages()" title="清空所有图像">🗑️ 清空</button>
                     </div>
                     <div id="multi-preview-images"></div>
@@ -1604,7 +1604,7 @@
             if (selectedMultiFiles.length > 0) {
                 previewContainer.style.display = 'block';
                 fileDisplay.classList.add('has-files');
-                fileDisplayText.textContent = `已添加 ${selectedMultiFiles.length} 张图像`;
+                fileDisplayText.textContent = `已添加 ${selectedMultiFiles.length} 张图像，点击可继续上传`;
                 
                 selectedMultiFiles.forEach((file, index) => {
                     const reader = new FileReader();
