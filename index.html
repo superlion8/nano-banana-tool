@@ -1480,17 +1480,30 @@
         }
         
         function renderHistory(historyToRender = null) {
+            console.log('=== renderHistory 被调用 ===');
+            console.log('传入的historyToRender:', historyToRender);
+            console.log('当前userHistory:', userHistory);
+            console.log('userHistory长度:', userHistory ? userHistory.length : 'undefined');
+            
             const historyList = document.getElementById('history-list');
+            if (!historyList) {
+                console.error('找不到history-list元素');
+                return;
+            }
             
             if (!currentUser) {
+                console.log('没有当前用户，显示登录提示');
                 historyList.innerHTML = '<div class="history-placeholder"><p>请先登录查看历史记录</p></div>';
                 return;
             }
             
             // 使用传入的历史记录或默认的userHistory
             const historyData = historyToRender || userHistory;
+            console.log('使用的历史数据:', historyData);
+            console.log('历史数据长度:', historyData ? historyData.length : 'undefined');
             
-            if (historyData.length === 0) {
+            if (!historyData || historyData.length === 0) {
+                console.log('历史数据为空，显示空状态');
                 historyList.innerHTML = '<div class="history-placeholder"><p>暂无生成历史记录</p><small>生成图像后，历史记录将显示在这里</small></div>';
                 return;
             }
@@ -2041,14 +2054,30 @@
                 console.log('找到的索引:', index);
                 
                 if (index !== -1) {
+                    // 从本地数组删除
                     userHistory.splice(index, 1);
-                    console.log('已从本地数组删除历史记录');
+                    console.log('已从本地数组删除历史记录，新长度:', userHistory.length);
                     
                     // 更新localStorage
                     saveUserHistoryToStorage();
                     
-                    // 重新渲染历史记录
+                    // 强制重新渲染历史记录
+                    console.log('准备重新渲染历史记录...');
                     renderHistory();
+                    console.log('历史记录界面已重新渲染');
+                    
+                    // 再次确认界面更新
+                    setTimeout(() => {
+                        console.log('延迟检查界面状态...');
+                        const currentHistoryItems = document.querySelectorAll('.history-item');
+                        console.log('当前界面显示的历史记录项数量:', currentHistoryItems.length);
+                        console.log('userHistory数组长度:', userHistory.length);
+                        
+                        if (currentHistoryItems.length !== userHistory.length) {
+                            console.log('界面与数据不同步，强制重新渲染');
+                            renderHistory();
+                        }
+                    }, 200);
                     
                     showSuccessMessage('历史记录已删除');
                 } else {
@@ -2057,7 +2086,15 @@
                     console.error('1. historyId类型不匹配');
                     console.error('2. userHistory数组为空或未定义');
                     console.error('3. 历史记录项的ID格式不一致');
-                    showError('未找到要删除的历史记录');
+                    
+                    // 即使没找到，也尝试刷新界面，以防数据不同步
+                    console.log('尝试强制刷新界面...');
+                    setTimeout(() => {
+                        renderHistory();
+                        console.log('界面已强制刷新');
+                    }, 100);
+                    
+                    showError('未找到要删除的历史记录，但界面已刷新');
                 }
                 
                 console.log('=== 删除历史记录调试信息结束 ===');
