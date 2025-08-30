@@ -91,7 +91,8 @@
             background-clip: text;
         }
 
-        .tabs {
+        /* 主标签页样式 */
+        .main-tabs {
             display: flex;
             margin-bottom: 30px;
             background: #f8f9fa;
@@ -99,7 +100,7 @@
             padding: 5px;
         }
 
-        .tab-button {
+        .main-tab-button {
             flex: 1;
             padding: 15px 30px;
             background: transparent;
@@ -112,17 +113,57 @@
             color: #666;
         }
 
-        .tab-button.active {
+        .main-tab-button.active {
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         }
 
-        .tab-content {
+        .main-tab-content {
             display: none;
         }
 
-        .tab-content.active {
+        .main-tab-content.active {
+            display: block;
+        }
+
+        /* 编辑器标签页样式 */
+        .editor-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 1px solid #e9ecef;
+            padding-bottom: 10px;
+        }
+
+        .editor-tab-button {
+            background: none;
+            border: none;
+            padding: 10px 20px;
+            font-size: 14px;
+            color: #666;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .editor-tab-button:hover {
+            color: #667eea;
+            background: #f8f9fa;
+        }
+
+        .editor-tab-button.active {
+            color: #667eea;
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+
+        .editor-tab-content {
+            display: none;
+        }
+
+        .editor-tab-content.active {
             display: block;
         }
 
@@ -882,7 +923,7 @@
 <body>
     <div class="container">
                 <div class="header-container">
-                    <h1>🍌 Nano Banana 图像生成与编辑工具</h1>
+                    <h1>🍌 Nano Banana AI 图像工具</h1>
                     <div class="user-section">
                         <div id="login-section" class="login-section">
                             <button id="google-login-btn" class="google-login-btn" onclick="googleLogin()">
@@ -905,70 +946,76 @@
 
         <div class="main-layout">
             <div class="left-panel">
-                <div class="tabs">
-                    <button class="tab-button active" onclick="switchTab('text-to-image', event)">文本生成图像</button>
-                    <button class="tab-button" onclick="switchTab('multi-image', event)">图像编辑</button>
-                    <button class="tab-button" onclick="switchTab('history', event)" id="history-tab" style="display: none;">生成历史</button>
+                <div class="main-tabs">
+                    <button class="main-tab-button active" onclick="switchMainTab('editor', event)">Editor</button>
+                    <button class="main-tab-button" onclick="switchMainTab('history', event)" id="history-main-tab" style="display: none;">History</button>
                 </div>
 
-        <!-- 文本生成图像 -->
-        <div id="text-to-image" class="tab-content active">
-            <div class="input-group">
-                <label for="text-prompt">描述提示词</label>
-                <textarea id="text-prompt" placeholder="请输入您想要生成图像的详细描述，例如：Create a picture of a nano banana dish in a fancy restaurant with a Gemini theme"></textarea>
-            </div>
-            <button class="generate-btn" onclick="generateFromText()">生成图像</button>
-        </div>
+                <!-- Editor Tab - 生成功能 -->
+                <div id="editor-tab" class="main-tab-content active">
+                    <div class="editor-tabs">
+                        <button class="editor-tab-button active" onclick="switchEditorTab('text-to-image', event)">文本生成图像</button>
+                        <button class="editor-tab-button" onclick="switchEditorTab('multi-image', event)">图像编辑</button>
+                    </div>
 
+                    <!-- 文本生成图像 -->
+                    <div id="text-to-image" class="editor-tab-content active">
+                        <div class="input-group">
+                            <label for="text-prompt">描述提示词</label>
+                            <textarea id="text-prompt" placeholder="请输入您想要生成图像的详细描述，例如：Create a picture of a nano banana dish in a fancy restaurant with a Gemini theme"></textarea>
+                        </div>
+                        <button class="generate-btn" onclick="generateFromText()">生成图像</button>
+                    </div>
 
-
-        <!-- 图像编辑 -->
-        <div id="multi-image" class="tab-content">
-            <div class="input-group">
-                <label for="multi-prompt">编辑提示词</label>
-                <textarea id="multi-prompt" placeholder="请输入您想要对图像进行的编辑描述，例如：Create a professional e-commerce fashion photo. Take the blue floral dress from the first image and let the woman from the second image wear it. Generate a realistic, full-body shot of the woman wearing the dress, with the lighting and shadows adjusted to match the outdoor environment."></textarea>
-            </div>
-            <div class="input-group">
-                <label for="multi-images">添加图像 (1-3张)</label>
-                <div class="multi-file-input-wrapper">
-                    <input type="file" id="multi-images" accept="image/*" multiple onchange="handleImageUpload(this)">
-                    <div class="multi-file-input-display">
-                        <span id="multi-file-display-text">点击选择图像文件或拖拽到此处</span>
+                    <!-- 图像编辑 -->
+                    <div id="multi-image" class="editor-tab-content">
+                        <div class="input-group">
+                            <label for="multi-prompt">编辑提示词</label>
+                            <textarea id="multi-prompt" placeholder="请输入您想要对图像进行的编辑描述，例如：Create a professional e-commerce fashion photo. Take the blue floral dress from the first image and let the woman from the second image wear it. Generate a realistic, full-body shot of the woman wearing the dress, with the lighting and shadows adjusted to match the outdoor environment."></textarea>
+                        </div>
+                        <div class="input-group">
+                            <label for="multi-images">添加图像 (1-3张)</label>
+                            <div class="multi-file-input-wrapper">
+                                <input type="file" id="multi-images" accept="image/*" multiple onchange="handleImageUpload(this)">
+                                <div class="multi-file-input-display">
+                                    <span id="multi-file-display-text">点击选择图像文件或拖拽到此处</span>
+                                </div>
+                            </div>
+                            <div class="upload-hint">
+                                <small>支持JPEG、PNG格式，单张图像最大10MB。支持单张图像编辑或多张图像组合编辑</small>
+                            </div>
+                            <div id="multi-image-preview" class="multi-preview-container" style="display: none;">
+                                <div class="preview-header">
+                                    <span class="image-count">已添加 <span id="image-count">0</span> 张图像，点击可继续上传</span>
+                                    <button class="clear-all-btn" onclick="clearAllImages()" title="清空所有图像">🗑️ 清空</button>
+                                </div>
+                                <div id="multi-preview-images"></div>
+                            </div>
+                        </div>
+                        <button class="generate-btn" onclick="generateFromMultiImages()">编辑图像</button>
                     </div>
                 </div>
-                <div class="upload-hint">
-                    <small>支持JPEG、PNG格式，单张图像最大10MB。支持单张图像编辑或多张图像组合编辑</small>
-                </div>
-                <div id="multi-image-preview" class="multi-preview-container" style="display: none;">
-                    <div class="preview-header">
-                        <span class="image-count">已添加 <span id="image-count">0</span> 张图像，点击可继续上传</span>
-                        <button class="clear-all-btn" onclick="clearAllImages()" title="清空所有图像">🗑️ 清空</button>
-                    </div>
-                    <div id="multi-preview-images"></div>
-                </div>
-            </div>
-            <button class="generate-btn" onclick="generateFromMultiImages()">编辑图像</button>
-        </div>
 
-        <!-- 生成历史 -->
-        <div id="history" class="tab-content">
-            <div class="history-header">
-                <h3>生成历史记录</h3>
-                <div class="history-filters">
-                    <select id="history-type-filter" onchange="filterHistory()">
-                        <option value="">全部类型</option>
-                        <option value="text-to-image">文本生成图像</option>
-                        <option value="image-edit">图像编辑</option>
-                    </select>
-                    <input type="text" id="history-search" placeholder="搜索提示词..." oninput="searchHistory()">
+                <!-- History Tab - 生成历史 -->
+                <div id="history-tab" class="main-tab-content">
+                    <div class="history-header">
+                        <h3>生成历史记录</h3>
+                        <div class="history-filters">
+                            <select id="history-type-filter" onchange="filterHistory()">
+                                <option value="">全部类型</option>
+                                <option value="text-to-image">文本生成图像</option>
+                                <option value="image-edit">图像编辑</option>
+                            </select>
+                            <input type="text" id="history-search" placeholder="搜索提示词..." oninput="searchHistory()">
+                        </div>
+                    </div>
+                    <div id="history-list" class="history-list">
+                                            <div class="history-placeholder">
+                        <p>暂无生成历史记录</p>
+                        <small>生成图像后，历史记录将显示在这里</small>
+                    </div>
+                    </div>
                 </div>
-            </div>
-            <div id="history-list" class="history-list">
-                <div class="history-placeholder">
-                    <p>登录后查看您的生成历史记录</p>
-                </div>
-            </div>
-        </div>
             </div>
 
             <div class="right-panel">
@@ -980,8 +1027,6 @@
                 <div class="error">
                     <p id="error-message"></p>
                 </div>
-
-
 
                 <div class="result">
                     <h3>生成结果</h3>
@@ -1045,31 +1090,31 @@
         const GOOGLE_CLIENT_ID = '547002648100-ktofram0al1so1n8ii436bnv49hgikfk.apps.googleusercontent.com';
         const GOOGLE_SCOPE = 'openid email profile';
 
-        // 切换标签页
-        function switchTab(tabId, event) {
-            console.log('switchTab called with:', tabId, event);
+        // 切换主标签页（Editor/History）
+        function switchMainTab(tabId, event) {
+            console.log('switchMainTab called with:', tabId, event);
             
             try {
-                // 隐藏所有标签内容
-                document.querySelectorAll('.tab-content').forEach(content => {
+                // 隐藏所有主标签内容
+                document.querySelectorAll('.main-tab-content').forEach(content => {
                     content.classList.remove('active');
                 });
                 
-                // 移除所有按钮的active类
-                document.querySelectorAll('.tab-button').forEach(button => {
+                // 移除所有主标签按钮的active类
+                document.querySelectorAll('.main-tab-button').forEach(button => {
                     button.classList.remove('active');
                 });
                 
-                // 显示选中的标签内容
-                const targetTab = document.getElementById(tabId);
+                // 显示选中的主标签内容
+                const targetTab = document.getElementById(tabId + '-tab');
                 if (targetTab) {
                     targetTab.classList.add('active');
                 } else {
-                    console.error('Target tab not found:', tabId);
+                    console.error('Target main tab not found:', tabId + '-tab');
                     return;
                 }
                 
-                // 激活对应的按钮
+                // 激活对应的主标签按钮
                 if (event && event.target) {
                     event.target.classList.add('active');
                 }
@@ -1084,20 +1129,55 @@
                     successMessage.classList.remove('show');
                 }
                 
-                            // 清空多图选择
-            if (tabId !== 'multi-image') {
-                selectedMultiFiles = [];
-                updateMultiImagePreview();
-            } else {
-                // 如果切换到图像编辑标签页，显示引用提示
-                if (selectedMultiFiles.length > 0) {
-                    showSuccessMessage(`已加载 ${selectedMultiFiles.length} 张图像，您可以继续添加更多图像或直接编辑`);
-                }
-            }
-                
-                console.log('Tab switched successfully to:', tabId);
+                console.log('Main tab switched successfully to:', tabId);
             } catch (error) {
-                console.error('Error in switchTab:', error);
+                console.error('Error in switchMainTab:', error);
+            }
+        }
+        
+        // 切换编辑器标签页（文本生成图像/图像编辑）
+        function switchEditorTab(tabId, event) {
+            console.log('switchEditorTab called with:', tabId, event);
+            
+            try {
+                // 隐藏所有编辑器标签内容
+                document.querySelectorAll('.editor-tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                
+                // 移除所有编辑器标签按钮的active类
+                document.querySelectorAll('.editor-tab-button').forEach(button => {
+                    button.classList.remove('active');
+                });
+                
+                // 显示选中的编辑器标签内容
+                const targetTab = document.getElementById(tabId);
+                if (targetTab) {
+                    targetTab.classList.add('active');
+                } else {
+                    console.error('Target editor tab not found:', tabId);
+                    return;
+                }
+                
+                // 激活对应的编辑器标签按钮
+                if (event && event.target) {
+                    event.target.classList.add('active');
+                }
+                
+                // 清空多图选择
+                if (tabId !== 'multi-image') {
+                    selectedMultiFiles = [];
+                    updateMultiImagePreview();
+                } else {
+                    // 如果切换到图像编辑标签页，显示引用提示
+                    if (selectedMultiFiles.length > 0) {
+                        showSuccessMessage(`已加载 ${selectedMultiFiles.length} 张图像，您可以继续添加更多图像或直接编辑`);
+                    }
+                }
+                
+                console.log('Editor tab switched successfully to:', tabId);
+            } catch (error) {
+                console.error('Error in switchEditorTab:', error);
             }
         }
         
@@ -1237,8 +1317,8 @@
             // 更新UI显示
             updateLoginUI();
             
-            // 显示历史记录标签页
-            document.getElementById('history-tab').style.display = 'inline-block';
+                            // 显示历史记录主标签页
+                document.getElementById('history-main-tab').style.display = 'inline-block';
             
             // 加载用户历史记录
             loadUserHistory();
@@ -1256,16 +1336,16 @@
             // 更新UI显示
             updateLoginUI();
             
-            // 隐藏历史记录标签页
-            document.getElementById('history-tab').style.display = 'none';
+                            // 隐藏历史记录主标签页
+                document.getElementById('history-main-tab').style.display = 'none';
             
             // 清除localStorage
             localStorage.removeItem('nanoBananaUser');
             
-            // 如果当前在历史记录标签页，切换到文本生成图像
-            if (document.getElementById('history').classList.contains('active')) {
-                switchTab('text-to-image');
-            }
+                            // 如果当前在历史记录标签页，切换到Editor标签页
+                if (document.getElementById('history-tab').classList.contains('active')) {
+                    switchMainTab('editor');
+                }
             
             showSuccessMessage('已成功登出');
         }
@@ -1300,27 +1380,11 @@
         function loadUserHistory() {
             if (!currentUser) return;
             
-            // 这里应该从后端API获取用户历史记录
-            // 为了演示，我们使用模拟数据
-            userHistory = [
-                {
-                    id: 'hist_1',
-                    type: 'text-to-image',
-                    prompt: 'Create a picture of a nano banana dish in a fancy restaurant',
-                    resultImage: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
-                    createdAt: new Date(Date.now() - 86400000).toISOString(),
-                    inputImages: []
-                },
-                {
-                    id: 'hist_2',
-                    type: 'image-edit',
-                    prompt: 'Make the background more colorful',
-                    resultImage: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
-                    createdAt: new Date(Date.now() - 172800000).toISOString(),
-                    inputImages: ['data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==']
-                }
-            ];
+            // 清空历史记录，不再使用fake数据
+            userHistory = [];
             
+            // 这里应该从后端API获取用户历史记录
+            // 目前暂时为空，等待真实数据
             renderHistory();
         }
         
@@ -1363,8 +1427,9 @@
             const historyItem = userHistory.find(item => item.id === historyId);
             if (!historyItem) return;
             
-            // 切换到图像编辑标签页
-            switchTab('multi-image');
+            // 切换到Editor标签页的图像编辑功能
+            switchMainTab('editor');
+            switchEditorTab('multi-image');
             
             // 清空当前选择
             selectedMultiFiles = [];
@@ -1480,14 +1545,25 @@
                 }
             }
             
-            // 测试标签页切换功能
-            console.log('Testing tab switching functionality...');
-            const tabs = document.querySelectorAll('.tab-button');
-            tabs.forEach((tab, index) => {
-                console.log(`Tab ${index}:`, tab.textContent, 'onclick:', tab.onclick);
+            // 测试主标签页切换功能
+            console.log('Testing main tab switching functionality...');
+            const mainTabs = document.querySelectorAll('.main-tab-button');
+            mainTabs.forEach((tab, index) => {
+                console.log(`Main Tab ${index}:`, tab.textContent, 'onclick:', tab.onclick);
                 // 确保onclick事件正确绑定
                 if (!tab.onclick) {
-                    console.warn(`Tab ${index} has no onclick handler`);
+                    console.warn(`Main Tab ${index} has no onclick handler`);
+                }
+            });
+            
+            // 测试编辑器标签页切换功能
+            console.log('Testing editor tab switching functionality...');
+            const editorTabs = document.querySelectorAll('.editor-tab-button');
+            editorTabs.forEach((tab, index) => {
+                console.log(`Editor Tab ${index}:`, tab.textContent, 'onclick:', tab.onclick);
+                // 确保onclick事件正确绑定
+                if (!tab.onclick) {
+                    console.warn(`Editor Tab ${index} has no onclick handler`);
                 }
             });
             
@@ -1690,8 +1766,9 @@
                 return;
             }
 
-            // 切换到多图生成标签页
-            switchTab('multi-image');
+            // 切换到Editor标签页的图像编辑功能
+            switchMainTab('editor');
+            switchEditorTab('multi-image');
             
             // 清空当前多图选择
             selectedMultiFiles = [];
