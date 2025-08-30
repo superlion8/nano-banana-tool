@@ -3057,10 +3057,10 @@
                 }
             } catch (error) {
                 console.error('生成图像错误:', error);
+                hideGenerationStatus(); // 清除生成状态
                 showError(`生成图像失败: ${error.message}`);
             } finally {
                 hideLoading();
-                hideGenerationStatus();
             }
         }
 
@@ -3377,10 +3377,10 @@
                 
             } catch (error) {
                 console.error('Multi-image generation error:', error);
+                hideGenerationStatus(); // 清除生成状态
                 showError(`图像编辑失败: ${error.message}`);
             } finally {
                 hideLoading();
-                hideGenerationStatus();
             }
         }
 
