@@ -901,6 +901,29 @@
             color: #666;
             font-size: 12px;
         }
+        
+        /* 历史记录同步状态样式 */
+        .history-sync-status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f8f9fa;
+            border-radius: 8px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .sync-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #e9ecef;
+            border-top: 2px solid #764ba2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
 
         @media (max-width: 768px) {
             .container {
@@ -1652,57 +1675,92 @@
         // 历史记录相关函数
         async function loadUserHistory() {
             if (!currentUser) {
-                console.log('loadUserHistory: 没有当前用户');
                 return;
             }
             
-            console.log('loadUserHistory: 开始加载用户历史记录，用户ID:', currentUser.id);
-            
-            // 每次登录都优先从Supabase加载完整的历史记录
-            if (supabase) {
-                console.log('loadUserHistory: 优先从Supabase加载历史记录...');
-                try {
-                    const hasSupabaseHistory = await loadHistoryFromSupabase();
-                    if (hasSupabaseHistory) {
-                        console.log('loadUserHistory: 从Supabase加载历史记录成功，共', userHistory.length, '条');
-                        
-                        // 同步到localStorage作为备份
-                        saveUserHistoryToStorage();
-                        console.log('已同步Supabase数据到localStorage');
-                        
-                        renderHistory();
-                        return;
-                    } else {
-                        console.log('Supabase中没有历史记录，尝试从localStorage加载...');
-                    }
-                } catch (error) {
-                    console.error('loadUserHistory: Supabase加载失败，回退到localStorage:', error);
-                }
-            }
-            
-            // 如果Supabase不可用或没有数据，尝试从localStorage加载
-            console.log('loadUserHistory: 尝试从localStorage加载历史记录...');
+            // 先尝试从localStorage快速加载（用户体验优先）
             const hasLocalHistory = loadUserHistoryFromStorage();
-            
-            if (hasLocalHistory) {
-                console.log('loadUserHistory: 成功从localStorage加载历史记录，共', userHistory.length, '条');
-            } else {
-                // 如果没有本地历史记录，清空数组
-                userHistory = [];
-                console.log('loadUserHistory: 没有找到本地历史记录，初始化为空数组');
+            if (hasLocalHistory && userHistory.length > 0) {
+                renderHistory();
+                console.log('快速加载：从localStorage加载历史记录，共', userHistory.length, '条');
             }
             
-            renderHistory();
+            // 后台从Supabase同步最新数据（不阻塞UI）
+            if (supabase) {
+                loadHistoryFromSupabaseBackground();
+            }
+        }
+        
+        // 后台加载Supabase数据，不阻塞UI
+        async function loadHistoryFromSupabaseBackground() {
+            // 显示后台同步状态
+            showHistorySyncStatus();
             
-            console.log('loadUserHistory: 历史记录加载完成，当前userHistory长度:', userHistory.length);
+            try {
+                const { data, error } = await supabase
+                    .from('history')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .order('created_at', { ascending: false })
+                    .limit(50); // 限制加载数量，提升性能
+                
+                if (error) {
+                    console.error('Supabase加载失败:', error);
+                    hideHistorySyncStatus();
+                    return;
+                }
+                
+                if (data && data.length > 0) {
+                    // 转换数据格式
+                    const newHistory = data.map(item => ({
+                        id: String(item.id),
+                        type: item.type,
+                        prompt: item.prompt,
+                        resultImage: item.result_image,
+                        inputImages: item.input_images || [],
+                        createdAt: item.created_at
+                    }));
+                    
+                    // 更新本地数据
+                    userHistory = newHistory;
+                    saveUserHistoryToStorage();
+                    
+                    // 重新渲染（如果用户当前在History页面）
+                    const historyTab = document.querySelector('.main-tab-button[onclick*="history"]');
+                    if (historyTab && historyTab.classList.contains('active')) {
+                        renderHistory();
+                        console.log('后台同步：Supabase数据已更新，共', userHistory.length, '条');
+                    }
+                }
+                
+                hideHistorySyncStatus();
+            } catch (error) {
+                console.error('后台同步失败:', error);
+                hideHistorySyncStatus();
+            }
+        }
+        
+        // 显示历史记录同步状态
+        function showHistorySyncStatus() {
+            const historyList = document.getElementById('history-list');
+            if (historyList && userHistory.length > 0) {
+                const syncStatus = document.createElement('div');
+                syncStatus.id = 'history-sync-status';
+                syncStatus.className = 'history-sync-status';
+                syncStatus.innerHTML = '<div class="sync-spinner"></div><small>正在同步最新数据...</small>';
+                historyList.appendChild(syncStatus);
+            }
+        }
+        
+        // 隐藏历史记录同步状态
+        function hideHistorySyncStatus() {
+            const syncStatus = document.getElementById('history-sync-status');
+            if (syncStatus) {
+                syncStatus.remove();
+            }
         }
         
         function renderHistory(historyToRender = null) {
-            console.log('=== renderHistory 被调用 ===');
-            console.log('传入的historyToRender:', historyToRender);
-            console.log('当前userHistory:', userHistory);
-            console.log('userHistory长度:', userHistory ? userHistory.length : 'undefined');
-            
             const historyList = document.getElementById('history-list');
             if (!historyList) {
                 console.error('找不到history-list元素');
@@ -1710,24 +1768,19 @@
             }
             
             if (!currentUser) {
-                console.log('没有当前用户，显示登录提示');
                 historyList.innerHTML = '<div class="history-placeholder"><p>请先登录查看历史记录</p></div>';
                 return;
             }
             
             // 使用传入的历史记录或默认的userHistory
             const historyData = historyToRender || userHistory;
-            console.log('使用的历史数据:', historyData);
-            console.log('历史数据长度:', historyData ? historyData.length : 'undefined');
             
             if (!historyData || historyData.length === 0) {
-                console.log('历史数据为空，显示空状态');
                 historyList.innerHTML = '<div class="history-placeholder"><p>暂无生成历史记录</p><small>生成图像后，历史记录将显示在这里</small></div>';
                 return;
             }
             
             const historyHTML = historyData.map(item => {
-                console.log(`渲染历史记录项: ID="${item.id}", 类型=${typeof item.id}`);
                 return `
                 <div class="history-item">
                     <img src="${item.resultImage}" alt="生成结果" class="history-item-image" onclick="showImageModal('${item.resultImage}')">
