@@ -1536,6 +1536,10 @@
                 return;
             }
             
+            // 🚀 修复：登录成功后重置登出标志，确保状态一致性
+            isLoggingOut = false;
+            console.log('登录成功完成，重置登出标志');
+            
             showSuccessMessage(`欢迎回来，${user.name}！`);
         }
         
@@ -1586,6 +1590,10 @@
             
             // 清理界面：清空所有输入和显示内容
             clearAllInterfaceData();
+            
+            // 🚀 修复：登出完成后重置标志，允许用户重新登录
+            isLoggingOut = false;
+            console.log('登出完成，重置登录标志，允许重新登录');
             
             showSuccessMessage('已成功登出');
         }
