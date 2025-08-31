@@ -988,6 +988,14 @@
     </style>
 </head>
 <body>
+    <!-- 图像放大模态框 - 放在body下避免堆叠上下文问题 -->
+    <div id="image-modal" class="image-modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeImageModal()">&times;</span>
+            <img id="modal-image" src="" alt="放大图像">
+        </div>
+    </div>
+    
     <div class="container">
                 <div class="header-container">
                     <h1>🍌 Nano Banana AI 图像工具</h1>
@@ -1103,14 +1111,7 @@
                     </div>
                 </div>
 
-                <!-- 图像放大模态框 -->
-                <div id="image-modal" class="image-modal">
-                    <div class="modal-content">
-                        <span class="close-modal" onclick="closeImageModal()">&times;</span>
-                        <img id="modal-image" src="" alt="放大图像">
 
-                    </div>
-                </div>
 
                 <!-- 初始状态占位符 -->
                 <div id="initial-placeholder" class="initial-placeholder">
@@ -2797,28 +2798,32 @@
             const modalImage = document.getElementById('modal-image');
             
             if (modal && modalImage) {
-                // 先设置图像源
+                // 显示模态框 - 不设置任何位置，完全依赖CSS的position: fixed
+                modal.style.display = 'block';
+                
+                // 设置图像源
                 modalImage.src = imageSrc;
                 
-                // 等待图像加载完成后显示模态框
+                // 等待图像加载完成后应用动画效果
                 modalImage.onload = function() {
-                    modal.style.display = 'block';
-                    
                     // 禁止背景滚动
                     document.body.style.overflow = 'hidden';
                     
-                    // 添加加载完成后的样式
-                    modalImage.style.opacity = '1';
-                    
-                    // 添加淡入动画
+                    // 设置初始状态（透明）
                     modal.style.opacity = '0';
                     modal.style.transition = 'opacity 0.3s ease';
-                    setTimeout(() => {
+                    
+                    // 应用淡入动画
+                    requestAnimationFrame(() => {
                         modal.style.opacity = '1';
-                    }, 10);
+                    });
+                    
+                    // 图像加载完成后的样式
+                    modalImage.style.opacity = '1';
+                    modalImage.style.transition = 'opacity 0.3s ease';
                 };
                 
-                // 设置加载中的状态
+                // 设置图像加载中的状态
                 modalImage.style.opacity = '0';
                 modalImage.style.transition = 'opacity 0.3s ease';
                 
@@ -2832,14 +2837,20 @@
             const modal = document.getElementById('image-modal');
             
             if (modal) {
-                // 添加淡出动画
+                // 第一步：应用淡出动画
                 modal.style.opacity = '0';
                 modal.style.transition = 'opacity 0.3s ease';
                 
+                // 第二步：动画完成后隐藏模态框并重置状态
                 setTimeout(() => {
+                    // 隐藏模态框
                     modal.style.display = 'none';
+                    
                     // 恢复背景滚动
                     document.body.style.overflow = 'auto';
+                    
+                    // 重置透明度，为下次显示做准备
+                    modal.style.opacity = '1';
                 }, 300);
                 
                 // 移除键盘事件监听

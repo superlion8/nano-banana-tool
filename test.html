@@ -47,6 +47,13 @@
         <button onclick="testFileHandling()">测试文件处理</button>
         <div id="test-results" class="result"></div>
     </div>
+    
+    <div class="test-section">
+        <h2>模态框定位测试</h2>
+        <button onclick="testModalPositioning()">测试模态框定位</button>
+        <button onclick="testModalWithScroll()">测试滚动后模态框定位</button>
+        <div id="modal-test-results" class="result"></div>
+    </div>
 
     <script>
         function log(message) {
@@ -109,6 +116,53 @@
             });
             
             log('文件处理测试完成');
+        }
+        
+        function testModalPositioning() {
+            log('测试模态框定位...');
+            
+            // 创建测试模态框
+            const testModal = document.createElement('div');
+            testModal.id = 'test-modal';
+            testModal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.8);
+                z-index: 9999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 24px;
+            `;
+            testModal.innerHTML = `
+                <div style="text-align: center;">
+                    <h3>模态框定位测试</h3>
+                    <p>当前位置: top: ${testModal.style.top}, left: ${testModal.style.left}</p>
+                    <p>Position: ${testModal.style.position}</p>
+                    <button onclick="this.parentElement.parentElement.remove()" style="padding: 10px 20px; margin: 10px;">关闭</button>
+                </div>
+            `;
+            
+            document.body.appendChild(testModal);
+            log('✅ 模态框定位测试完成 - 检查模态框是否在屏幕中央');
+        }
+        
+        function testModalWithScroll() {
+            log('测试滚动后模态框定位...');
+            
+            // 先滚动页面
+            window.scrollTo(0, 500);
+            log('页面已滚动到位置 500px');
+            
+            // 等待滚动完成后测试模态框
+            setTimeout(() => {
+                testModalPositioning();
+                log('✅ 滚动后模态框定位测试完成');
+            }, 100);
         }
 
         // 页面加载完成后自动运行测试
