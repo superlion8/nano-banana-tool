@@ -2300,8 +2300,15 @@
             if (supabase) {
                 console.log('同步历史记录到Supabase...');
                 try {
-                    const supabaseSuccess = await saveHistoryToSupabase(historyItem);
-                    if (supabaseSuccess) {
+                    const supabaseData = await saveHistoryToSupabase(historyItem);
+                    if (supabaseData && supabaseData.id) {
+                        // 更新本地历史记录项的ID为Supabase返回的真实ID
+                        historyItem.id = supabaseData.id;
+                        console.log('已更新本地历史记录ID为Supabase ID:', supabaseData.id);
+                        
+                        // 重新保存到localStorage，确保ID同步
+                        saveUserHistoryToStorage();
+                        
                         console.log('历史记录已同步到Supabase');
                     } else {
                         console.warn('历史记录同步到Supabase失败，但已保存到localStorage');
@@ -2662,15 +2669,16 @@
                         result_image: historyItem.resultImage,
                         input_images: historyItem.inputImages,
                         created_at: historyItem.createdAt
-                    });
+                    })
+                    .select(); // 返回插入的数据，包括生成的ID
                 
                 if (error) {
                     console.error('保存历史记录到Supabase失败:', error);
                     return false;
                 }
                 
-                console.log('历史记录已同步到Supabase:', data);
-                return true;
+                // 返回插入的数据，包括生成的ID
+                return data && data[0] ? data[0] : false;
             } catch (error) {
                 console.error('Supabase历史记录同步错误:', error);
                 return false;
@@ -2757,10 +2765,18 @@
                 
                 // 从Supabase删除
                 if (supabase) {
+                    // 确保ID是整数类型，因为Supabase的id字段是整数
+                    const numericId = parseInt(historyId);
+                    if (isNaN(numericId)) {
+                        console.error('无效的ID格式:', historyId);
+                        showError('删除失败：无效的记录ID格式');
+                        return;
+                    }
+                    
                     const { error } = await supabase
                         .from('history')
                         .delete()
-                        .eq('id', historyId);
+                        .eq('id', numericId);
                     
                     if (error) {
                         console.error('从Supabase删除失败:', error);
