@@ -1590,6 +1590,18 @@
             authEpoch++;
             console.log('时代戳已增加，当前时代:', authEpoch);
             
+            // 🚀 兜底：强制关闭加载提示，避免残留
+            const loading = document.getElementById('history-loading');
+            const list = document.getElementById('history-list');
+            if (loading) {
+                loading.style.display = 'none';
+                console.log('强制关闭历史记录加载提示');
+            }
+            if (list) {
+                list.style.display = 'block';
+                console.log('恢复历史记录列表显示');
+            }
+            
             // 在登出前保存当前用户的历史记录
             if (currentUser && userHistory.length > 0) {
                 console.log('登出前保存历史记录，用户ID:', currentUser.id);
@@ -1761,8 +1773,8 @@
                     avatar: avatarUrl
                 });
                 
-                // 登录成功后自动加载历史记录
-                loadUserHistory();
+                // 🚀 移除重复调用：保持UI更新与数据加载解耦
+                // 历史记录加载由 loginUser() 流程统一管理
             } else {
                 loginSection.style.display = 'block';
                 userInfo.style.display = 'none';
@@ -1770,10 +1782,19 @@
         }
         
         // 历史记录相关函数
+        let _loadingHistory = false; // 🚀 轻量重入锁，防止并发加载
+        
         async function loadUserHistory() {
             if (!currentUser) {
                 return;
             }
+            
+            // 🚀 防止并发加载造成"菊花闪烁"
+            if (_loadingHistory) {
+                console.log('历史记录正在加载中，跳过重复调用');
+                return;
+            }
+            _loadingHistory = true;
             
             // 🚀 显示历史记录加载提示
             showHistoryLoading();
@@ -1809,6 +1830,7 @@
             } finally {
                 // 🚀 无论成功还是失败，都要隐藏历史记录加载提示
                 hideHistoryLoading();
+                _loadingHistory = false; // 🚀 释放重入锁
             }
         }
         

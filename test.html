@@ -58,6 +58,7 @@
     <div class="test-section">
         <h2>历史记录加载提示测试</h2>
         <button onclick="testHistoryLoading()">测试历史记录加载提示</button>
+        <button onclick="testHistoryLoadingLock()">测试重入锁机制</button>
         <div id="history-loading-test-results" class="result"></div>
     </div>
 
@@ -190,6 +191,26 @@
                 }, 3000);
             } else {
                 log('❌ showHistoryLoading 函数不存在');
+            }
+        }
+        
+        function testHistoryLoadingLock() {
+            log('测试历史记录加载重入锁...');
+            
+            if (typeof loadUserHistory === 'function') {
+                // 第一次调用
+                log('第一次调用 loadUserHistory...');
+                loadUserHistory();
+                
+                // 立即第二次调用（应该被重入锁阻止）
+                setTimeout(() => {
+                    log('第二次调用 loadUserHistory（应该被重入锁阻止）...');
+                    loadUserHistory();
+                }, 100);
+                
+                log('✅ 重入锁测试完成，检查控制台日志');
+            } else {
+                log('❌ loadUserHistory 函数不存在');
             }
         }
 
