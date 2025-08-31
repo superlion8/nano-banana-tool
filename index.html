@@ -1138,6 +1138,7 @@
         let currentUser = null;
         let userHistory = [];
         let isLoggingOut = false; // 防止登录/登出竞态条件的标志
+        let authEpoch = 0; // 🚀 时代戳/轮次防抖，防止旧登录流程干扰
         
         // Google OAuth 2.0 配置
         // 请按照以下步骤配置：
@@ -1468,6 +1469,10 @@
             console.log('=== 用户登录 ===');
             console.log('登录用户信息:', user);
             
+            // 🚀 保存当前时代戳，用于后续检查
+            const myEpoch = authEpoch;
+            console.log('登录流程开始，时代戳:', myEpoch);
+            
             // 🚀 检查是否正在登出，如果是则停止登录流程
             if (isLoggingOut) {
                 console.log('检测到正在登出，停止登录流程');
@@ -1514,14 +1519,22 @@
             if (supabase) {
                 console.log('同步用户信息到Supabase...');
                 await upsertUserToSupabase(user);
+                
+                // 🚀 保险丝1：upsert后检查是否被登出和时代戳
+                if (isLoggingOut || !currentUser || myEpoch !== authEpoch) {
+                    console.log('检测到登出、用户状态异常或时代戳不匹配，停止登录流程');
+                    return;
+                }
             }
             
             // 加载用户历史记录
             await loadUserHistory();
             
-            // 🚀 登录完成，重置登出标志
-            isLoggingOut = false;
-            console.log('登录完成，重置登出标志');
+            // 🚀 保险丝2：loadUserHistory后检查是否被登出和时代戳
+            if (isLoggingOut || !currentUser || myEpoch !== authEpoch) {
+                console.log('检测到登出、用户状态异常或时代戳不匹配，停止登录流程');
+                return;
+            }
             
             showSuccessMessage(`欢迎回来，${user.name}！`);
         }
@@ -1532,6 +1545,10 @@
             // 🚀 设置登出标志，防止竞态条件
             isLoggingOut = true;
             console.log('设置登出标志，防止登录流程继续执行');
+            
+            // 🚀 增加时代戳，让所有旧的登录流程自动失效
+            authEpoch++;
+            console.log('时代戳已增加，当前时代:', authEpoch);
             
             // 在登出前保存当前用户的历史记录
             if (currentUser && userHistory.length > 0) {
