@@ -1167,6 +1167,13 @@
         let selectedFile = null;
         let selectedMultiFiles = []; // 多图选择的文件数组
         
+        // 🚀 全局生成状态管理
+        let globalGenerationState = {
+            isGenerating: false,
+            message: '',
+            startTime: null
+        };
+        
         // Google登录相关变量
         let currentUser = null;
         let userHistory = [];
@@ -1247,6 +1254,14 @@
                 const successMessage = document.getElementById('success-message');
                 if (successMessage) {
                     successMessage.classList.remove('show');
+                }
+                
+                // 🚀 切换到 Editor 时，检查是否仍在生成中，自动恢复生成状态
+                if (tabId === 'editor') {
+                    if (globalGenerationState.isGenerating) {
+                        console.log('检测到 Editor 仍在生成中，自动恢复生成状态:', globalGenerationState.message);
+                        showGenerationStatus(globalGenerationState.message);
+                    }
                 }
                 
                 // 🚀 切换到 History 时，检查是否仍在同步/请求中，自动显示"加载中"
@@ -2579,6 +2594,11 @@
         
         // 显示生成状态提示
         function showGenerationStatus(message) {
+            // 🚀 保存全局生成状态
+            globalGenerationState.isGenerating = true;
+            globalGenerationState.message = message;
+            globalGenerationState.startTime = Date.now();
+            
             // 在右侧生成区域显示状态提示
             const resultSection = document.querySelector('.result');
             const initialPlaceholder = document.getElementById('initial-placeholder');
@@ -2604,6 +2624,11 @@
         
         // 隐藏生成状态提示
         function hideGenerationStatus() {
+            // 🚀 清除全局生成状态
+            globalGenerationState.isGenerating = false;
+            globalGenerationState.message = '';
+            globalGenerationState.startTime = null;
+            
             // 清除生成状态显示
             const resultSection = document.querySelector('.result');
             if (resultSection) {
@@ -2615,6 +2640,16 @@
                 }
             }
             console.log('隐藏生成状态提示');
+        }
+        
+        // 🚀 检查并恢复生成状态（用于界面切换后恢复状态）
+        function checkAndRestoreGenerationStatus() {
+            if (globalGenerationState.isGenerating) {
+                console.log('恢复生成状态:', globalGenerationState.message);
+                showGenerationStatus(globalGenerationState.message);
+                return true;
+            }
+            return false;
         }
         
 
