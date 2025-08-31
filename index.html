@@ -1137,6 +1137,7 @@
         // Google登录相关变量
         let currentUser = null;
         let userHistory = [];
+        let isLoggingOut = false; // 防止登录/登出竞态条件的标志
         
         // Google OAuth 2.0 配置
         // 请按照以下步骤配置：
@@ -1467,6 +1468,12 @@
             console.log('=== 用户登录 ===');
             console.log('登录用户信息:', user);
             
+            // 🚀 检查是否正在登出，如果是则停止登录流程
+            if (isLoggingOut) {
+                console.log('检测到正在登出，停止登录流程');
+                return;
+            }
+            
             // 检查是否有相同邮箱的用户数据
             const existingUserData = checkExistingUserData(user.email);
             if (existingUserData) {
@@ -1498,6 +1505,11 @@
             // 显示历史记录主标签页
             document.getElementById('history-main-tab').style.display = 'inline-block';
             
+            // 🚀 修复竞态条件：立即保存登录状态到localStorage
+            // 在await调用之前保存，避免被后续的登出操作覆盖
+            localStorage.setItem('nanoBananaUser', JSON.stringify(user));
+            console.log('登录状态已立即保存到localStorage');
+            
             // 同步用户信息到Supabase
             if (supabase) {
                 console.log('同步用户信息到Supabase...');
@@ -1507,14 +1519,19 @@
             // 加载用户历史记录
             await loadUserHistory();
             
-            // 保存登录状态到localStorage
-            localStorage.setItem('nanoBananaUser', JSON.stringify(user));
+            // 🚀 登录完成，重置登出标志
+            isLoggingOut = false;
+            console.log('登录完成，重置登出标志');
             
             showSuccessMessage(`欢迎回来，${user.name}！`);
         }
         
                 function googleLogout() {
             console.log('=== 用户登出 ===');
+            
+            // 🚀 设置登出标志，防止竞态条件
+            isLoggingOut = true;
+            console.log('设置登出标志，防止登录流程继续执行');
             
             // 在登出前保存当前用户的历史记录
             if (currentUser && userHistory.length > 0) {
