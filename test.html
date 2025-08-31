@@ -60,6 +60,7 @@
         <button onclick="testHistoryLoading()">测试历史记录加载提示</button>
         <button onclick="testHistoryLoadingLock()">测试重入锁机制</button>
         <button onclick="testHistoryTabSwitch()">测试标签切换加载状态</button>
+        <button onclick="testAntiFlicker()">测试防闪烁机制</button>
         <div id="history-loading-test-results" class="result"></div>
     </div>
 
@@ -236,6 +237,43 @@
                 log('✅ History 标签切换测试完成');
             } else {
                 log('❌ switchMainTab 函数不存在');
+            }
+        }
+        
+        function testAntiFlicker() {
+            log('测试防闪烁机制...');
+            
+            if (typeof showHistoryLoading === 'function' && typeof hideHistoryLoading === 'function') {
+                // 显示加载提示
+                log('显示加载提示...');
+                showHistoryLoading();
+                
+                // 立即尝试隐藏（应该被防闪烁机制延迟）
+                setTimeout(() => {
+                    log('50ms 后尝试隐藏（应该被防闪烁延迟）...');
+                    hideHistoryLoading();
+                    
+                    // 检查是否仍在显示
+                    const loading = document.getElementById('history-loading');
+                    if (loading && loading.style.display !== 'none') {
+                        log('✅ 防闪烁机制工作正常，加载提示仍在显示');
+                        
+                        // 350ms 后检查是否已隐藏
+                        setTimeout(() => {
+                            if (loading.style.display === 'none') {
+                                log('✅ 防闪烁延迟后成功隐藏加载提示');
+                            } else {
+                                log('❌ 防闪烁延迟后未能隐藏加载提示');
+                            }
+                        }, 350);
+                    } else {
+                        log('ℹ️ 加载提示立即隐藏（可能已超过 300ms）');
+                    }
+                }, 50);
+                
+                log('✅ 防闪烁测试启动完成');
+            } else {
+                log('❌ showHistoryLoading 或 hideHistoryLoading 函数不存在');
             }
         }
 

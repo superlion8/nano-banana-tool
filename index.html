@@ -1843,6 +1843,7 @@
         }
         
         // 🚀 显示历史记录加载提示
+        let _loadingShowTime = 0; // 记录加载开始时间
         function showHistoryLoading() {
             // 检查是否正在登出或时代戳不匹配，如果是则不显示加载提示
             if (isLoggingOut || !currentUser) {
@@ -1854,6 +1855,9 @@
             const historyList = document.getElementById('history-list');
             
             if (historyLoading && historyList) {
+                // 🚀 记录显示开始时间，用于防闪烁
+                _loadingShowTime = Date.now();
+                
                 historyLoading.style.display = 'block';
                 historyList.style.display = 'none';
                 console.log('显示历史记录加载提示');
@@ -1864,6 +1868,7 @@
                     console.log('当前不在 History 标签页，隐藏加载提示');
                     historyLoading.style.display = 'none';
                     historyList.style.display = 'block';
+                    _loadingShowTime = 0; // 重置时间
                 }
             }
         }
@@ -1880,9 +1885,29 @@
             const historyList = document.getElementById('history-list');
             
             if (historyLoading && historyList) {
-                historyLoading.style.display = 'none';
-                historyList.style.display = 'block';
-                console.log('隐藏历史记录加载提示');
+                // 🚀 防闪烁：确保加载提示至少显示 300ms
+                const showDuration = Date.now() - _loadingShowTime;
+                const minShowTime = 300; // 最少显示 300ms
+                
+                if (_loadingShowTime > 0 && showDuration < minShowTime) {
+                    const remainingTime = minShowTime - showDuration;
+                    console.log(`防闪烁延迟: 已显示 ${showDuration}ms，延迟 ${remainingTime}ms 后隐藏`);
+                    
+                    setTimeout(() => {
+                        // 再次检查状态，确保延迟期间没有登出
+                        if (!isLoggingOut && currentUser && historyLoading && historyList) {
+                            historyLoading.style.display = 'none';
+                            historyList.style.display = 'block';
+                            console.log('延迟后隐藏历史记录加载提示');
+                        }
+                        _loadingShowTime = 0; // 重置时间
+                    }, remainingTime);
+                } else {
+                    historyLoading.style.display = 'none';
+                    historyList.style.display = 'block';
+                    console.log('隐藏历史记录加载提示');
+                    _loadingShowTime = 0; // 重置时间
+                }
             }
         }
         

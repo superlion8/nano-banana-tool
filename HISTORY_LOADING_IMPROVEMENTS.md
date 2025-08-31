@@ -88,6 +88,22 @@ async function loadUserHistory() {
 **解决方案：**
 在 `switchMainTab()` 函数中添加检查，切换到 History 时自动显示加载状态。
 
+### **5. 防闪烁机制优化**
+
+**问题描述：**
+当数据返回非常快时（< 300ms），加载提示会一闪而过，影响用户体验。
+
+**解决方案：**
+为 `showHistoryLoading()` 和 `hideHistoryLoading()` 添加最短显示 300ms 的"防闪烁"计时。
+
+### **6. 语法错误修复**
+
+**问题描述：**
+`googleLogout` 函数被错误地嵌套在 `loginUser` 函数内部，导致语法错误和脚本无法正常执行。
+
+**解决方案：**
+修复 `googleLogout` 函数的缩进，确保它是独立的顶级函数。
+
 **代码修改：**
 ```javascript
 function googleLogout() {
@@ -128,6 +144,71 @@ function switchMainTab(tabId, event) {
 }
 ```
 
+**代码修改：**
+```javascript
+let _loadingShowTime = 0; // 记录加载开始时间
+
+function showHistoryLoading() {
+    // ... 状态检查 ...
+    
+    if (historyLoading && historyList) {
+        // 🚀 记录显示开始时间，用于防闪烁
+        _loadingShowTime = Date.now();
+        
+        historyLoading.style.display = 'block';
+        historyList.style.display = 'none';
+        // ...
+    }
+}
+
+function hideHistoryLoading() {
+    // ... 状态检查 ...
+    
+    if (historyLoading && historyList) {
+        // 🚀 防闪烁：确保加载提示至少显示 300ms
+        const showDuration = Date.now() - _loadingShowTime;
+        const minShowTime = 300; // 最少显示 300ms
+        
+        if (_loadingShowTime > 0 && showDuration < minShowTime) {
+            const remainingTime = minShowTime - showDuration;
+            setTimeout(() => {
+                // 延迟隐藏，确保最少显示时间
+                if (!isLoggingOut && currentUser && historyLoading && historyList) {
+                    historyLoading.style.display = 'none';
+                    historyList.style.display = 'block';
+                }
+                _loadingShowTime = 0;
+            }, remainingTime);
+        } else {
+            // 立即隐藏
+            historyLoading.style.display = 'none';
+            historyList.style.display = 'block';
+            _loadingShowTime = 0;
+        }
+    }
+}
+```
+
+**代码修改：**
+```javascript
+// 修复前（错误的嵌套）：
+async function loginUser(user) {
+    // ... 登录逻辑 ...
+}
+        function googleLogout() { // ❌ 错误缩进，嵌套在 loginUser 内
+            // ... 登出逻辑 ...
+        }
+
+// 修复后（正确的独立函数）：
+async function loginUser(user) {
+    // ... 登录逻辑 ...
+}
+
+function googleLogout() { // ✅ 正确缩进，独立函数
+    // ... 登出逻辑 ...
+}
+```
+
 **优势：**
 - 兜底保护
 - 避免极端状态下的残留
@@ -138,18 +219,30 @@ function switchMainTab(tabId, event) {
 - 自动检测同步状态
 - 避免用户困惑
 
+**优势：**
+- 避免快速闪烁
+- 提供更稳定的视觉体验
+- 智能延迟机制
+
+**优势：**
+- 修复严重的语法错误
+- 确保脚本正常执行
+- 函数结构清晰
+
 ## 🧪 测试功能
 
 ### **测试页面功能**
 - `testHistoryLoading()` - 测试基本的加载提示显示/隐藏
 - `testHistoryLoadingLock()` - 测试重入锁机制
 - `testHistoryTabSwitch()` - 测试切换到 History 标签时的加载状态
+- `testAntiFlicker()` - 测试防闪烁机制
 
 ### **测试场景**
 1. **重复调用测试**：验证重入锁是否阻止重复加载
 2. **登出测试**：验证登出时是否强制关闭加载提示
 3. **并发测试**：验证多个同时调用是否被正确处理
 4. **标签切换测试**：验证切换到 History 时是否自动显示加载状态
+5. **防闪烁测试**：验证快速隐藏时是否被延迟至少 300ms
 
 ## 📊 改进效果
 
@@ -164,6 +257,8 @@ function switchMainTab(tabId, event) {
 - ✅ 登出时强制关闭所有加载状态
 - ✅ 与现有 Abort/epoch 逻辑完全兼容
 - ✅ 切换到 History 时自动显示加载状态
+- ✅ 防闪烁机制确保最少显示 300ms
+- ✅ 修复语法错误，脚本正常执行
 
 ## 🔮 技术原理
 
@@ -184,11 +279,13 @@ function switchMainTab(tabId, event) {
 
 ## 📝 总结
 
-通过这四个最小改动，我们实现了：
+通过这六个关键改动，我们实现了：
 
 1. **避免重复加载**：保持 UI 更新与数据加载解耦
 2. **防止闪烁**：重入锁确保加载提示稳定显示
 3. **兜底保护**：登出时强制关闭所有加载状态
 4. **智能状态检测**：切换到 History 时自动显示加载状态
+5. **防闪烁机制**：确保加载提示至少显示 300ms，避免一闪而过
+6. **语法错误修复**：修复函数嵌套问题，确保脚本正常执行
 
-这些改进让历史记录加载提示更加稳定、丝滑，提升了用户体验，同时保持了代码的简洁性和可维护性。
+这些改进让历史记录加载提示更加稳定、丝滑，提升了用户体验，同时保持了代码的简洁性和可维护性。特别是防闪烁机制和语法修复，解决了关键的用户体验和功能性问题。
