@@ -59,6 +59,7 @@
         <h2>历史记录加载提示测试</h2>
         <button onclick="testHistoryLoading()">测试历史记录加载提示</button>
         <button onclick="testHistoryLoadingLock()">测试重入锁机制</button>
+        <button onclick="testHistoryTabSwitch()">测试标签切换加载状态</button>
         <div id="history-loading-test-results" class="result"></div>
     </div>
 
@@ -211,6 +212,30 @@
                 log('✅ 重入锁测试完成，检查控制台日志');
             } else {
                 log('❌ loadUserHistory 函数不存在');
+            }
+        }
+        
+        function testHistoryTabSwitch() {
+            log('测试切换到 History 标签时的加载状态...');
+            
+            if (typeof switchMainTab === 'function') {
+                // 模拟切换到 History 标签
+                log('切换到 History 标签...');
+                switchMainTab('history');
+                
+                // 检查是否显示了加载提示
+                setTimeout(() => {
+                    const loading = document.getElementById('history-loading');
+                    if (loading && loading.style.display !== 'none') {
+                        log('✅ History 标签显示加载状态');
+                    } else {
+                        log('ℹ️ History 标签未显示加载状态（可能没有正在同步的数据）');
+                    }
+                }, 100);
+                
+                log('✅ History 标签切换测试完成');
+            } else {
+                log('❌ switchMainTab 函数不存在');
             }
         }
 

@@ -80,6 +80,14 @@ async function loadUserHistory() {
 **解决方案：**
 在 `googleLogout()` 开头强制关闭加载提示，作为兜底机制。
 
+### **4. 切换到 History 时自动显示加载状态**
+
+**问题描述：**
+有时用户先登录停在 Editor，几百毫秒后才点 History。如果此时数据仍在同步/请求中，应该自动显示"加载中"状态。
+
+**解决方案：**
+在 `switchMainTab()` 函数中添加检查，切换到 History 时自动显示加载状态。
+
 **代码修改：**
 ```javascript
 function googleLogout() {
@@ -105,21 +113,43 @@ function googleLogout() {
 }
 ```
 
+**代码修改：**
+```javascript
+function switchMainTab(tabId, event) {
+    // ... 你原来的切换逻辑 ...
+    
+    // 🚀 切换到 History 时，检查是否仍在同步/请求中，自动显示"加载中"
+    if (tabId === 'history') {
+        if (_loadingHistory || window.isHistorySyncing) {
+            console.log('检测到 History 仍在同步中，自动显示加载状态');
+            showHistoryLoading();
+        }
+    }
+}
+```
+
 **优势：**
 - 兜底保护
 - 避免极端状态下的残留
 - 确保界面状态一致性
+
+**优势：**
+- 用户体验更流畅
+- 自动检测同步状态
+- 避免用户困惑
 
 ## 🧪 测试功能
 
 ### **测试页面功能**
 - `testHistoryLoading()` - 测试基本的加载提示显示/隐藏
 - `testHistoryLoadingLock()` - 测试重入锁机制
+- `testHistoryTabSwitch()` - 测试切换到 History 标签时的加载状态
 
 ### **测试场景**
 1. **重复调用测试**：验证重入锁是否阻止重复加载
 2. **登出测试**：验证登出时是否强制关闭加载提示
 3. **并发测试**：验证多个同时调用是否被正确处理
+4. **标签切换测试**：验证切换到 History 时是否自动显示加载状态
 
 ## 📊 改进效果
 
@@ -133,6 +163,7 @@ function googleLogout() {
 - ✅ 稳定的"正在加载历史记录..."提示
 - ✅ 登出时强制关闭所有加载状态
 - ✅ 与现有 Abort/epoch 逻辑完全兼容
+- ✅ 切换到 History 时自动显示加载状态
 
 ## 🔮 技术原理
 
@@ -153,10 +184,11 @@ function googleLogout() {
 
 ## 📝 总结
 
-通过这三个最小改动，我们实现了：
+通过这四个最小改动，我们实现了：
 
 1. **避免重复加载**：保持 UI 更新与数据加载解耦
 2. **防止闪烁**：重入锁确保加载提示稳定显示
 3. **兜底保护**：登出时强制关闭所有加载状态
+4. **智能状态检测**：切换到 History 时自动显示加载状态
 
 这些改进让历史记录加载提示更加稳定、丝滑，提升了用户体验，同时保持了代码的简洁性和可维护性。

@@ -1249,6 +1249,14 @@
                     successMessage.classList.remove('show');
                 }
                 
+                // 🚀 切换到 History 时，检查是否仍在同步/请求中，自动显示"加载中"
+                if (tabId === 'history') {
+                    if (_loadingHistory || window.isHistorySyncing) {
+                        console.log('检测到 History 仍在同步中，自动显示加载状态');
+                        showHistoryLoading();
+                    }
+                }
+                
                 console.log('Main tab switched successfully to:', tabId);
             } catch (error) {
                 console.error('Error in switchMainTab:', error);
@@ -1849,6 +1857,14 @@
                 historyLoading.style.display = 'block';
                 historyList.style.display = 'none';
                 console.log('显示历史记录加载提示');
+                
+                // 🚀 确保当前在 History 标签页时才显示加载提示
+                const historyTab = document.getElementById('history-tab');
+                if (historyTab && !historyTab.classList.contains('active')) {
+                    console.log('当前不在 History 标签页，隐藏加载提示');
+                    historyLoading.style.display = 'none';
+                    historyList.style.display = 'block';
+                }
             }
         }
         
