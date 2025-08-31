@@ -54,6 +54,12 @@
         <button onclick="testModalWithScroll()">测试滚动后模态框定位</button>
         <div id="modal-test-results" class="result"></div>
     </div>
+    
+    <div class="test-section">
+        <h2>历史记录加载提示测试</h2>
+        <button onclick="testHistoryLoading()">测试历史记录加载提示</button>
+        <div id="history-loading-test-results" class="result"></div>
+    </div>
 
     <script>
         function log(message) {
@@ -163,6 +169,28 @@
                 testModalPositioning();
                 log('✅ 滚动后模态框定位测试完成');
             }, 100);
+        }
+        
+        function testHistoryLoading() {
+            log('测试历史记录加载提示...');
+            
+            // 测试显示加载提示
+            if (typeof showHistoryLoading === 'function') {
+                showHistoryLoading();
+                log('✅ 显示历史记录加载提示');
+                
+                // 3秒后隐藏
+                setTimeout(() => {
+                    if (typeof hideHistoryLoading === 'function') {
+                        hideHistoryLoading();
+                        log('✅ 隐藏历史记录加载提示');
+                    } else {
+                        log('❌ hideHistoryLoading 函数不存在');
+                    }
+                }, 3000);
+            } else {
+                log('❌ showHistoryLoading 函数不存在');
+            }
         }
 
         // 页面加载完成后自动运行测试

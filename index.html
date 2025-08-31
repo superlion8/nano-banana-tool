@@ -793,6 +793,33 @@
         .history-filters input {
             min-width: 200px;
         }
+        
+        /* 🚀 历史记录加载提示样式 */
+        .history-loading {
+            text-align: center;
+            padding: 40px 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .history-loading .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+        
+        .history-loading p {
+            color: #666;
+            font-size: 16px;
+            margin: 0;
+        }
 
         .history-list {
             min-height: 200px;
@@ -1085,6 +1112,12 @@
                             <button class="clear-all-history-btn" onclick="clearAllHistory()" style="margin-left: 10px; padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">清空所有</button>
                         </div>
                     </div>
+                    <!-- 🚀 历史记录加载提示 -->
+                    <div id="history-loading" class="history-loading" style="display: none;">
+                        <div class="loading-spinner"></div>
+                        <p>正在加载历史记录...</p>
+                    </div>
+                    
                     <div id="history-list" class="history-list">
                                             <div class="history-placeholder">
                         <p>暂无生成历史记录</p>
@@ -1742,26 +1775,77 @@
                 return;
             }
             
-            // 设置同步状态
-            window.isHistorySyncing = true;
+            // 🚀 显示历史记录加载提示
+            showHistoryLoading();
             
-            // 先尝试从localStorage快速加载（用户体验优先）
-            const hasLocalHistory = loadUserHistoryFromStorage();
-            if (hasLocalHistory && userHistory.length > 0) {
+            try {
+                // 设置同步状态
+                window.isHistorySyncing = true;
+                
+                // 先尝试从localStorage快速加载（用户体验优先）
+                const hasLocalHistory = loadUserHistoryFromStorage();
+                if (hasLocalHistory && userHistory.length > 0) {
+                    renderHistory();
+                    console.log('快速加载：从localStorage加载历史记录，共', userHistory.length, '条');
+                }
+                
+                // 后台从Supabase同步最新数据（不阻塞UI）
+                if (supabase) {
+                    await loadHistoryFromSupabaseBackground();
+                }
+                
+                // 同步完成，清除状态
+                window.isHistorySyncing = false;
+                
+                // 重新渲染以显示最终结果
                 renderHistory();
-                console.log('快速加载：从localStorage加载历史记录，共', userHistory.length, '条');
+            } catch (error) {
+                console.error('加载历史记录失败:', error);
+                // 同步完成，清除状态
+                window.isHistorySyncing = false;
+                
+                // 重新渲染以显示最终结果
+                renderHistory();
+            } finally {
+                // 🚀 无论成功还是失败，都要隐藏历史记录加载提示
+                hideHistoryLoading();
+            }
+        }
+        
+        // 🚀 显示历史记录加载提示
+        function showHistoryLoading() {
+            // 检查是否正在登出或时代戳不匹配，如果是则不显示加载提示
+            if (isLoggingOut || !currentUser) {
+                console.log('检测到登出或用户状态异常，不显示加载提示');
+                return;
             }
             
-            // 后台从Supabase同步最新数据（不阻塞UI）
-            if (supabase) {
-                await loadHistoryFromSupabaseBackground();
+            const historyLoading = document.getElementById('history-loading');
+            const historyList = document.getElementById('history-list');
+            
+            if (historyLoading && historyList) {
+                historyLoading.style.display = 'block';
+                historyList.style.display = 'none';
+                console.log('显示历史记录加载提示');
+            }
+        }
+        
+        // 🚀 隐藏历史记录加载提示
+        function hideHistoryLoading() {
+            // 检查是否正在登出或时代戳不匹配，如果是则不隐藏加载提示
+            if (isLoggingOut || !currentUser) {
+                console.log('检测到登出或用户状态异常，不隐藏加载提示');
+                return;
             }
             
-            // 同步完成，清除状态
-            window.isHistorySyncing = false;
+            const historyLoading = document.getElementById('history-loading');
+            const historyList = document.getElementById('history-list');
             
-            // 重新渲染以显示最终结果
-            renderHistory();
+            if (historyLoading && historyList) {
+                historyLoading.style.display = 'none';
+                historyList.style.display = 'block';
+                console.log('隐藏历史记录加载提示');
+            }
         }
         
         // 后台加载Supabase数据，不阻塞UI
