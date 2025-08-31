@@ -30,8 +30,8 @@ async function loginUser(user) {
 
 ## ✅ 修复方案
 
-### **方案 1：提前保存登录状态（主要修复）**
-将 `localStorage.setItem` 提前到 `await` 调用之前，确保登录状态立即保存。
+### **方案 1：等待数据加载完成后再保存登录状态（主要修复）**
+将 `localStorage.setItem` 放在所有 `await` 调用之后，确保用户数据完整性，避免竞态条件。
 
 ### **方案 2：添加登出标志防抖（额外保护）**
 使用全局标志防止登录流程在登出后继续执行。
@@ -44,21 +44,24 @@ async function loginUser(user) {
 
 ## 🔧 修复实施
 
-### **1. 提前保存登录状态**
+### **1. 等待数据加载完成后再保存登录状态**
 ```javascript
 async function loginUser(user) {
     // ... 用户设置和UI更新 ...
     
-    // 🚀 修复竞态条件：立即保存登录状态到localStorage
-    // 在await调用之前保存，避免被后续的登出操作覆盖
-    localStorage.setItem('nanoBananaUser', JSON.stringify(user));
-    console.log('登录状态已立即保存到localStorage');
+    // 🚀 修复竞态条件：等待所有数据加载完成后再保存登录状态
+    // 这样可以确保用户数据完整性，避免竞态条件
     
     // 异步操作
     if (supabase) {
         await upsertUserToSupabase(user);
     }
     await loadUserHistory();
+    
+    // 🚀 现在安全地保存登录状态到localStorage
+    // 所有数据都已加载完成，用户状态完整
+    localStorage.setItem('nanoBananaUser', JSON.stringify(user));
+    console.log('所有数据加载完成，登录状态已安全保存到localStorage');
     
     // 登录完成
     showSuccessMessage(`欢迎回来，${user.name}！`);
@@ -176,12 +179,19 @@ async function loginUser(user) {
 3. **用户操作**：用户在异步操作期间可能进行登出操作
 4. **状态覆盖**：后续的 `setItem` 覆盖了之前的 `removeItem`
 
+### **为什么"立即保存"是错误的？**
+1. **数据不完整**：用户数据还未完全加载就保存登录状态
+2. **竞态加剧**：立即保存后，如果用户快速登出，`removeItem` 可能来不及执行
+3. **状态不一致**：`localStorage` 中的状态与实际用户数据不匹配
+4. **刷新问题**：页面刷新时可能读到不完整的用户状态
+
 ### **修复的核心思想**
-1. **立即保存**：在异步操作前保存关键状态
+1. **数据完整性优先**：等待所有异步操作完成后再保存登录状态
 2. **状态检查**：使用标志位检查当前状态
 3. **流程控制**：防止冲突的操作流程继续执行
 4. **时代戳防抖**：使用时代戳机制防止旧流程"回魂"
 5. **生命周期管理**：让登出标记的生命周期只由登出函数掌控
+6. **避免竞态条件**：通过正确的时序安排避免状态不一致
 
 ## 📝 总结
 

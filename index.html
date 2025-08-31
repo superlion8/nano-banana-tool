@@ -1510,10 +1510,8 @@
             // 显示历史记录主标签页
             document.getElementById('history-main-tab').style.display = 'inline-block';
             
-            // 🚀 修复竞态条件：立即保存登录状态到localStorage
-            // 在await调用之前保存，避免被后续的登出操作覆盖
-            localStorage.setItem('nanoBananaUser', JSON.stringify(user));
-            console.log('登录状态已立即保存到localStorage');
+            // 🚀 修复竞态条件：等待所有数据加载完成后再保存登录状态
+            // 这样可以确保用户数据完整性，避免竞态条件
             
             // 同步用户信息到Supabase
             if (supabase) {
@@ -1535,6 +1533,11 @@
                 console.log('检测到登出、用户状态异常或时代戳不匹配，停止登录流程');
                 return;
             }
+            
+            // 🚀 现在安全地保存登录状态到localStorage
+            // 所有数据都已加载完成，用户状态完整
+            localStorage.setItem('nanoBananaUser', JSON.stringify(user));
+            console.log('所有数据加载完成，登录状态已安全保存到localStorage');
             
             // 🚀 修复：登录成功后重置登出标志，确保状态一致性
             isLoggingOut = false;
