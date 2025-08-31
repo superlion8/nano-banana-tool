@@ -1511,7 +1511,7 @@
             console.log('登录用户信息:', user);
             
             // 🚀 保存当前时代戳，用于后续检查
-            const myEpoch = authEpoch;
+            const myEpoch = ++authEpoch;
             console.log('登录流程开始，时代戳:', myEpoch);
             
             // 🚀 检查是否正在登出，如果是则停止登录流程
