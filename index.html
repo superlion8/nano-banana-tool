@@ -2597,8 +2597,16 @@
         
         // 隐藏生成状态提示
         function hideGenerationStatus() {
-            // 状态提示会在showResult或hideResult中自动处理
-            // 这里只需要记录日志
+            // 清除生成状态显示
+            const resultSection = document.querySelector('.result');
+            if (resultSection) {
+                // 如果当前显示的是生成状态，则隐藏结果区域
+                const statusElement = resultSection.querySelector('.generation-status-inline');
+                if (statusElement) {
+                    resultSection.style.display = 'none';
+                    resultSection.classList.remove('show');
+                }
+            }
             console.log('隐藏生成状态提示');
         }
         
@@ -3291,6 +3299,7 @@
                 showError(`生成图像失败: ${error.message}`);
             } finally {
                 hideLoading();
+                hideGenerationStatus(); // 确保在finally中也清除生成状态
             }
         }
 
@@ -3611,6 +3620,7 @@
                 showError(`图像编辑失败: ${error.message}`);
             } finally {
                 hideLoading();
+                hideGenerationStatus(); // 确保在finally中也清除生成状态
             }
         }
 
