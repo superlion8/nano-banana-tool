@@ -34,7 +34,7 @@ export default async function handler(req, res) {
 
   try {
     const { method } = req;
-    const userId = req.headers['user-id'] || req.body?.user_id;
+    const userId = req.headers['user-id'] || req.body?.user_id || req.query?.user_id;
 
     if (!userId) {
       return res.status(400).json({ 

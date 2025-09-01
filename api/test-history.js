@@ -18,7 +18,7 @@ export default async function handler(req, res) {
 
   try {
     // 获取用户ID
-    const userId = req.headers['user-id'] || req.query.user_id;
+    const userId = req.headers['user-id'] || req.body?.user_id || req.query?.user_id;
     console.log('测试用户ID:', userId);
 
     if (!userId) {
