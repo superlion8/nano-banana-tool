@@ -2043,8 +2043,8 @@
                 }
                 
                 console.log('renderHistory: 准备渲染', historyData.length, '条记录');
-            
-            const historyHTML = historyData.map(item => {
+                
+                const historyHTML = historyData.map(item => {
                 return `
                 <div class="history-item">
                     <img src="${item.resultImage}" alt="生成结果" class="history-item-image" onclick="showImageModal('${item.resultImage}')">
@@ -3749,8 +3749,8 @@
 
         // 为多图上传添加拖拽支持
         document.addEventListener('DOMContentLoaded', function() {
-            // 初始化上传模式
-            switchUploadMode();
+            // 初始化上传模式（已移除不存在的函数调用）
+            console.log('DOM加载完成，初始化多图上传功能');
             
             // 添加模态框外部点击关闭功能
             const imageModal = document.getElementById('image-modal');
