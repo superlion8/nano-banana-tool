@@ -1975,9 +1975,10 @@
                         createdAt: item.created_at
                     }));
                     
-                    // 更新本地数据
+                    // 更新本地数据（从云端拉取的数据不保存到localStorage，避免存储空间问题）
                     userHistory = newHistory;
-                    saveUserHistoryToStorage();
+                    console.log('后台同步：云端数据已更新到内存，共', userHistory.length, '条');
+                    console.log('注意：云端数据不会保存到localStorage，只有新生成的记录才会保存');
                     
                     // 重新渲染（如果用户当前在History页面）
                     const historyTab = document.querySelector('.main-tab-button[onclick*="history"]');
