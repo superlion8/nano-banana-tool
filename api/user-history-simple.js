@@ -73,13 +73,13 @@ export default async function handler(req, res) {
             });
           }
 
-          // 获取最新的20条记录
+          // 获取最新的50条记录
           const { data: historyData, error: historyError } = await supabase
             .from('history')
             .select('id, type, prompt, result_image, created_at')
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
-            .limit(20);
+            .limit(50);
 
           if (historyError) {
             console.error('查询失败:', historyError);
