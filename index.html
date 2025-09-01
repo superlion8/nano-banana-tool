@@ -1160,7 +1160,7 @@
         console.log('Script starting...');
         
         // API配置 - 现在通过本地服务器代理
-        const API_BASE = window.location.origin; // 使用当前域名
+        const API_BASE = window.location.origin || ''; // 使用当前域名，避免undefined
         const MODEL = 'gemini-2.5-flash-image-preview';
         
         let currentImageData = null;
@@ -2018,24 +2018,31 @@
         }
         
         function renderHistory(historyToRender = null) {
-            const historyList = document.getElementById('history-list');
-            if (!historyList) {
-                console.error('找不到history-list元素');
-                return;
-            }
-            
-            if (!currentUser) {
-                historyList.innerHTML = '<div class="history-placeholder"><p>请先登录查看历史记录</p></div>';
-                return;
-            }
-            
-            // 使用传入的历史记录或默认的userHistory
-            const historyData = historyToRender || userHistory;
-            
-            if (!historyData || historyData.length === 0) {
-                historyList.innerHTML = '<div class="history-placeholder"><p>暂无生成历史记录</p><small>生成图像后，历史记录将显示在这里</small></div>';
-                return;
-            }
+            try {
+                console.log('renderHistory: 开始渲染历史记录');
+                console.log('renderHistory: 传入数据:', historyToRender);
+                console.log('renderHistory: 当前userHistory:', userHistory);
+                
+                const historyList = document.getElementById('history-list');
+                if (!historyList) {
+                    console.error('找不到history-list元素');
+                    return;
+                }
+                
+                if (!currentUser) {
+                    historyList.innerHTML = '<div class="history-placeholder"><p>请先登录查看历史记录</p></div>';
+                    return;
+                }
+                
+                // 使用传入的历史记录或默认的userHistory
+                const historyData = historyToRender || userHistory;
+                
+                if (!historyData || historyData.length === 0) {
+                    historyList.innerHTML = '<div class="history-placeholder"><p>暂无生成历史记录</p><small>生成图像后，历史记录将显示在这里</small></div>';
+                    return;
+                }
+                
+                console.log('renderHistory: 准备渲染', historyData.length, '条记录');
             
             const historyHTML = historyData.map(item => {
                 return `
@@ -2065,6 +2072,14 @@
                 countInfo.className = 'history-count-info';
                 countInfo.innerHTML = `<small>显示 ${filteredCount} 条记录，共 ${totalCount} 条</small>`;
                 historyList.appendChild(countInfo);
+            }
+            
+            console.log('renderHistory: 渲染完成');
+        } catch (error) {
+            console.error('renderHistory: 渲染历史记录时出错:', error);
+            const historyList = document.getElementById('history-list');
+            if (historyList) {
+                historyList.innerHTML = '<div class="history-placeholder"><p>渲染历史记录时出错</p><small>请刷新页面重试</small></div>';
             }
         }
         
@@ -2361,82 +2376,13 @@
             renderHistory();
         }
         
-        // 保存用户历史记录到localStorage（智能存储管理）
+        // 保存用户历史记录到localStorage（已禁用，避免存储空间问题）
         function saveUserHistoryToStorage() {
-            if (!currentUser) {
-                console.log('saveUserHistoryToStorage: 没有当前用户');
-                return;
-            }
+            console.log('saveUserHistoryToStorage: localStorage存储已禁用，依赖后端数据');
+            console.log('saveUserHistoryToStorage: 当前历史记录数量:', userHistory ? userHistory.length : 0);
             
-            if (!userHistory) {
-                console.log('saveUserHistoryToStorage: 没有历史记录数据');
-                return;
-            }
-            
-            const storageKey = `nanoBananaHistory_${currentUser.id}`;
-            console.log('saveUserHistoryToStorage: 保存到存储键:', storageKey);
-            console.log('saveUserHistoryToStorage: 当前用户ID:', currentUser.id);
-            console.log('saveUserHistoryToStorage: 保存的历史记录数量:', userHistory.length);
-            
-            // 先清理localStorage
-            cleanupLocalStorage();
-            
-            try {
-                // 尝试保存完整数据
-                const dataToSave = JSON.stringify(userHistory);
-                localStorage.setItem(storageKey, dataToSave);
-                console.log('saveUserHistoryToStorage: 历史记录已成功保存到localStorage');
-                
-                // 验证保存是否成功
-                const savedData = localStorage.getItem(storageKey);
-                if (savedData) {
-                    const parsedData = JSON.parse(savedData);
-                    console.log('saveUserHistoryToStorage: 验证保存成功，存储的数据数量:', parsedData.length);
-                } else {
-                    console.error('saveUserHistoryToStorage: 验证失败，存储后无法读取数据');
-                }
-            } catch (error) {
-                console.error('saveUserHistoryToStorage: 保存历史记录到localStorage失败:', error);
-                
-                // 如果是存储空间不足，尝试保存最近的数据
-                if (error.name === 'QuotaExceededError') {
-                    console.log('saveUserHistoryToStorage: 存储空间不足，尝试保存最近的数据...');
-                    try {
-                        // 只保存最近的20条记录
-                        const recentHistory = userHistory.slice(0, 20);
-                        const recentData = JSON.stringify(recentHistory);
-                        localStorage.setItem(storageKey, recentData);
-                        console.log('saveUserHistoryToStorage: 成功保存最近20条记录到localStorage');
-                        
-                        // 更新内存中的数据
-                        userHistory = recentHistory;
-                        console.log('saveUserHistoryToStorage: 已更新内存中的数据为最近20条');
-                    } catch (recentError) {
-                        console.error('saveUserHistoryToStorage: 保存最近数据也失败:', recentError);
-                        
-                        // 最后尝试：只保存基本信息
-                        try {
-                            const basicHistory = userHistory.slice(0, 10).map(item => ({
-                                id: item.id,
-                                type: item.type,
-                                prompt: item.prompt,
-                                createdAt: item.createdAt
-                                // 不保存 resultImage 和 inputImages 以节省空间
-                            }));
-                            const basicData = JSON.stringify(basicHistory);
-                            localStorage.setItem(storageKey, basicData);
-                            console.log('saveUserHistoryToStorage: 成功保存基本信息（10条记录）到localStorage');
-                            
-                            // 更新内存中的数据
-                            userHistory = basicHistory;
-                            console.log('saveUserHistoryToStorage: 已更新内存中的数据为基本信息');
-                        } catch (basicError) {
-                            console.error('saveUserHistoryToStorage: 保存基本信息也失败:', basicError);
-                            console.log('saveUserHistoryToStorage: 无法保存到localStorage，将依赖后端数据');
-                        }
-                    }
-                }
-            }
+            // 不再尝试保存到localStorage，避免QuotaExceededError
+            // 所有数据都依赖后端存储，前端只做内存缓存
         }
         
         // 清理localStorage中的旧数据
@@ -3420,7 +3366,11 @@
             showGenerationStatus('正在生成图像');
 
             try {
-                const response = await fetch(`${API_BASE}/api/generate-image`, {
+                // 确保API_BASE不为undefined
+                const apiUrl = API_BASE ? `${API_BASE}/api/generate-image` : '/api/generate-image';
+                console.log('generateFromText: 使用API URL:', apiUrl);
+                
+                const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -3746,7 +3696,11 @@
                 
 
                 
-                const response = await fetch(`${API_BASE}/api/generate-multi-image`, {
+                // 确保API_BASE不为undefined
+                const apiUrl = API_BASE ? `${API_BASE}/api/generate-multi-image` : '/api/generate-multi-image';
+                console.log('generateFromMultiImages: 使用API URL:', apiUrl);
+                
+                const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
