@@ -75,13 +75,13 @@ export default async function handler(req, res) {
         try {
           console.log('开始查询历史记录，用户ID:', userId);
           
-          // 简化查询，移除重试机制以减少超时风险
+          // 简化查询，使用更简单的查询避免超时
           const { data: historyData, error: historyError } = await supabase
             .from('history')
-            .select('*')
+            .select('id, type, prompt, result_image, created_at')
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
-            .limit(50); // 减少限制数量
+            .limit(20); // 进一步减少限制数量
 
           console.log('查询完成，错误:', historyError);
           console.log('数据条数:', historyData?.length || 0);

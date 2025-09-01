@@ -1,3 +1,5 @@
+
+
 export default async function handler(req, res) {
   console.log('=== test-connection API 开始处理 ===');
 
@@ -50,16 +52,32 @@ export default async function handler(req, res) {
 
     console.log('Supabase 客户端创建成功');
 
-    // 测试简单查询
-    console.log('测试简单查询...');
+    // 测试最简单的查询 - 只检查表是否存在
+    console.log('测试表是否存在...');
     const { data, error } = await supabase
       .from('history')
-      .select('count')
-      .limit(1);
+      .select('id')
+      .limit(1)
+      .maybeSingle(); // 使用 maybeSingle 避免找不到记录时的错误
 
     console.log('查询结果:', { data, error });
 
     if (error) {
+      // 如果是表不存在的错误，尝试创建表
+      if (error.message.includes('relation "history" does not exist')) {
+        console.log('history 表不存在，尝试创建...');
+        return res.status(200).json({
+          success: true,
+          message: 'Supabase connection successful, but history table does not exist',
+          data: {
+            url: supabaseUrl,
+            keyType: serviceRoleKey ? 'service_role' : 'anon',
+            tableExists: false,
+            suggestion: 'Please create the history table in Supabase'
+          }
+        });
+      }
+
       return res.status(500).json({
         error: 'Database connection failed',
         message: error.message,
@@ -74,7 +92,8 @@ export default async function handler(req, res) {
       data: {
         url: supabaseUrl,
         keyType: serviceRoleKey ? 'service_role' : 'anon',
-        queryResult: data
+        tableExists: true,
+        hasData: data !== null
       }
     });
 
