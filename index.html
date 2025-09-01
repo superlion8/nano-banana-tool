@@ -1579,9 +1579,9 @@
             // 🚀 修复竞态条件：等待所有数据加载完成后再保存登录状态
             // 这样可以确保用户数据完整性，避免竞态条件
             
-            // 同步用户信息到Supabase
-            if (supabase) {
-                console.log('同步用户信息到Supabase...');
+            // 同步用户信息到后端
+            if (config) {
+                console.log('同步用户信息到后端...');
                 await upsertUserToSupabase(user);
                 
                 // 🚀 保险丝1：upsert后检查是否被登出和时代戳
@@ -1843,8 +1843,8 @@
                     console.log('快速加载：从localStorage加载历史记录，共', userHistory.length, '条');
                 }
                 
-                // 后台从Supabase同步最新数据（不阻塞UI）
-                if (supabase) {
+                // 后台从后端同步最新数据（不阻塞UI）
+                if (config) {
                     await loadHistoryFromSupabaseBackground();
                 }
                 
@@ -2332,25 +2332,25 @@
             // 保存到localStorage，确保数据持久化
             saveUserHistoryToStorage();
             
-            // 同时保存到Supabase
-            if (supabase) {
-                console.log('同步历史记录到Supabase...');
+            // 同时保存到后端
+            if (config) {
+                console.log('同步历史记录到后端...');
                 try {
-                    const supabaseData = await saveHistoryToSupabase(historyItem);
-                    if (supabaseData && supabaseData.id) {
-                        // 更新本地历史记录项的ID为Supabase返回的真实ID
-                        historyItem.id = supabaseData.id;
-                        console.log('已更新本地历史记录ID为Supabase ID:', supabaseData.id);
+                    const backendData = await saveHistoryToSupabase(historyItem);
+                    if (backendData && backendData.id) {
+                        // 更新本地历史记录项的ID为后端返回的真实ID
+                        historyItem.id = backendData.id;
+                        console.log('已更新本地历史记录ID为后端ID:', backendData.id);
                         
                         // 重新保存到localStorage，确保ID同步
                         saveUserHistoryToStorage();
                         
-                        console.log('历史记录已同步到Supabase');
+                        console.log('历史记录已同步到后端');
                     } else {
-                        console.warn('历史记录同步到Supabase失败，但已保存到localStorage');
+                        console.warn('历史记录同步到后端失败，但已保存到localStorage');
                     }
                 } catch (error) {
-                    console.error('Supabase同步错误:', error);
+                    console.error('后端同步错误:', error);
                 }
             }
             
