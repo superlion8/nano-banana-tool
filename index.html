@@ -1936,26 +1936,35 @@
             }
         }
         
-        // 后台加载Supabase数据，不阻塞UI
+        // 后台加载Supabase数据，不阻塞UI - 修复版本
         async function loadHistoryFromSupabaseBackground() {
             // 显示后台同步状态
             showHistorySyncStatus();
             
             try {
-                const { data, error } = await supabase
-                    .from('history')
-                    .select('*')
-                    .eq('user_id', currentUser.id)
-                    .order('created_at', { ascending: false })
-                    .limit(50); // 限制加载数量，提升性能
+                console.log('开始从后端API加载历史记录，用户ID:', currentUser.id);
                 
-                if (error) {
-                    console.error('Supabase加载失败:', error);
+                // 使用后端API而不是直接调用Supabase
+                const response = await fetch('/api/user-history', {
+                    method: 'GET',
+                    headers: {
+                        'user-id': currentUser.id
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    console.error('从后端加载历史记录失败:', result.error);
                     hideHistorySyncStatus();
                     return;
                 }
                 
+                const data = result.data;
+                
                 if (data && data.length > 0) {
+                    console.log('后端API返回原始数据:', data);
+                    
                     // 转换数据格式
                     const newHistory = data.map(item => ({
                         id: String(item.id),
@@ -1974,8 +1983,10 @@
                     const historyTab = document.querySelector('.main-tab-button[onclick*="history"]');
                     if (historyTab && historyTab.classList.contains('active')) {
                         renderHistory();
-                        console.log('后台同步：Supabase数据已更新，共', userHistory.length, '条');
+                        console.log('后台同步：后端API数据已更新，共', userHistory.length, '条');
                     }
+                } else {
+                    console.log('后端API中没有找到历史记录');
                 }
                 
                 hideHistorySyncStatus();
@@ -2667,35 +2678,42 @@
         
 
         
-        // Supabase用户管理函数
+        // Supabase用户管理函数 - 修复版本
         async function upsertUserToSupabase(user) {
-            if (!supabase) {
-                console.log('Supabase未配置，跳过用户同步');
+            if (!config) {
+                console.log('配置未加载，跳过用户同步');
                 return null;
             }
             
             try {
-                const { data, error } = await supabase
-                    .from('users')
-                    .upsert({
-                        id: user.id,
+                console.log('同步用户信息到后端，用户ID:', user.id);
+                
+                // 使用专门的用户同步API
+                const response = await fetch('/api/user-sync', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'user-id': user.id
+                    },
+                    body: JSON.stringify({
+                        user_id: user.id,
                         email: user.email,
                         name: user.name,
-                        avatar_url: user.picture || user.avatar,
-                        created_at: new Date().toISOString()
-                    }, {
-                        onConflict: 'id'
-                    });
+                        avatar_url: user.picture || user.avatar
+                    })
+                });
                 
-                if (error) {
-                    console.error('保存用户到Supabase失败:', error);
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    console.error('同步用户信息失败:', result.error);
                     return null;
                 }
                 
-                console.log('用户已同步到Supabase:', data);
-                return data;
+                console.log('用户信息已同步到后端');
+                return result.data;
             } catch (error) {
-                console.error('Supabase用户同步错误:', error);
+                console.error('用户同步错误:', error);
                 return null;
             }
         }
