@@ -1944,8 +1944,8 @@
             try {
                 console.log('开始从后端API加载历史记录，用户ID:', currentUser.id);
                 
-                // 使用后端API而不是直接调用Supabase
-                const response = await fetch('/api/user-history', {
+                // 使用简化版后端API
+                const response = await fetch('/api/user-history-simple', {
                     method: 'GET',
                     headers: {
                         'user-id': currentUser.id
