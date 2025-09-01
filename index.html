@@ -1192,29 +1192,39 @@
         // 🚀 Vercel部署配置：
         // 授权JavaScript来源: https://nano-banana-tool.vercel.app
         // 授权重定向URI: https://nano-banana-tool.vercel.app/oauth-callback.html
-        // 注意：JavaScript来源不要包含结尾斜杠或路径！
-        const GOOGLE_CLIENT_ID = '547002648100-ktofram0al1so1n8ii436bnv49hgikfk.apps.googleusercontent.com';
+        // Google OAuth配置 - 从后端API获取
+        let GOOGLE_CLIENT_ID = null;
         const GOOGLE_SCOPE = 'openid email profile';
         
-        // Supabase配置
-        // 请按照以下步骤配置：
-        // 1. 访问 https://supabase.com/ 创建项目
-        // 2. 在项目设置中获取URL和anon key
-        // 3. 创建以下数据表：
-        //    - users: id, email, name, avatar_url, created_at
-        //    - history: id, user_id, type, prompt, result_image, input_images, created_at
-        const SUPABASE_URL = 'https://cvdogeigbpussfamctsu.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2ZG9nZWlnYnB1c3NmYW1jdHN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY1NjEyMjUsImV4cCI6MjA3MjEzNzIyNX0.JSY1sEK1aLaqaIp5_MTM_99XERVaDY18akQeKCDYEik';
-        
-        // 初始化Supabase客户端
+        // 初始化Supabase客户端 - 从后端API安全获取配置
         let supabase = null;
-        try {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            console.log('✅ Supabase客户端已初始化');
-            console.log('Supabase URL:', SUPABASE_URL);
-        } catch (error) {
-            console.error('❌ Supabase客户端初始化失败:', error);
-            console.warn('⚠️ 将使用localStorage作为备选方案');
+        let config = null;
+        
+        // 从后端获取配置
+        async function initializeSupabase() {
+            try {
+                const response = await fetch('/api/config');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                config = await response.json();
+                
+                if (config.supabaseUrl && config.supabaseAnonKey) {
+                    supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+                    console.log('✅ Supabase客户端已安全初始化');
+                } else {
+                    throw new Error('配置信息不完整');
+                }
+                
+                // 设置Google Client ID
+                if (config.googleClientId) {
+                    GOOGLE_CLIENT_ID = config.googleClientId;
+                    console.log('✅ Google Client ID已安全加载');
+                }
+            } catch (error) {
+                console.error('❌ Supabase客户端初始化失败:', error);
+                console.warn('⚠️ 将使用localStorage作为备选方案');
+            }
         }
 
         // 切换主标签页（Editor/History）
@@ -2428,9 +2438,12 @@
         }
         
         // 页面加载完成后的初始化
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             console.log('Page loaded successfully');
             console.log('Available functions:', typeof switchTab, typeof generateFromText);
+            
+            // 初始化Supabase
+            await initializeSupabase();
             
             // 检查Google OAuth配置
             if (GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
@@ -2689,56 +2702,66 @@
         
         // Supabase历史记录管理函数
         async function saveHistoryToSupabase(historyItem) {
-            if (!supabase || !currentUser) {
-                console.log('Supabase未配置或用户未登录，跳过历史记录同步');
+            if (!config || !currentUser) {
+                console.log('配置未加载或用户未登录，跳过历史记录同步');
                 return false;
             }
             
             try {
-                const { data, error } = await supabase
-                    .from('history')
-                    .insert({
-                        user_id: currentUser.id,
+                const response = await fetch('/api/user-history', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'user-id': currentUser.id
+                    },
+                    body: JSON.stringify({
                         type: historyItem.type,
                         prompt: historyItem.prompt,
                         result_image: historyItem.resultImage,
                         input_images: historyItem.inputImages,
-                        created_at: historyItem.createdAt
+                        user_id: currentUser.id
                     })
-                    .select(); // 返回插入的数据，包括生成的ID
+                });
                 
-                if (error) {
-                    console.error('保存历史记录到Supabase失败:', error);
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    console.error('保存历史记录失败:', result.error);
                     return false;
                 }
                 
-                // 返回插入的数据，包括生成的ID
-                return data && data[0] ? data[0] : false;
+                // 返回插入的数据
+                return result.data && result.data[0] ? result.data[0] : false;
             } catch (error) {
-                console.error('Supabase历史记录同步错误:', error);
+                console.error('历史记录同步错误:', error);
                 return false;
             }
         }
         
         async function loadHistoryFromSupabase() {
-            if (!supabase || !currentUser) {
-                console.log('Supabase未配置或用户未登录，跳过历史记录加载');
+            if (!config || !currentUser) {
+                console.log('配置未加载或用户未登录，跳过历史记录加载');
                 return false;
             }
             
             try {
-                console.log('从Supabase加载历史记录，用户ID:', currentUser.id);
+                console.log('从后端API加载历史记录，用户ID:', currentUser.id);
                 
-                const { data, error } = await supabase
-                    .from('history')
-                    .select('*')
-                    .eq('user_id', currentUser.id)
-                    .order('created_at', { ascending: false });
+                const response = await fetch('/api/user-history', {
+                    method: 'GET',
+                    headers: {
+                        'user-id': currentUser.id
+                    }
+                });
                 
-                if (error) {
-                    console.error('从Supabase加载历史记录失败:', error);
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    console.error('从后端加载历史记录失败:', result.error);
                     return false;
                 }
+                
+                const data = result.data;
                 
                 if (data && data.length > 0) {
                     console.log('Supabase返回原始数据:', data);
@@ -2798,9 +2821,8 @@
                     });
                 }
                 
-                // 从Supabase删除
-                if (supabase) {
-                    // 确保ID是整数类型，因为Supabase的id字段是整数
+                // 从后端API删除
+                if (config) {
                     const numericId = parseInt(historyId);
                     if (isNaN(numericId)) {
                         console.error('无效的ID格式:', historyId);
@@ -2808,18 +2830,22 @@
                         return;
                     }
                     
-                    const { error } = await supabase
-                        .from('history')
-                        .delete()
-                        .eq('id', numericId);
+                    const response = await fetch(`/api/user-history?id=${numericId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'user-id': currentUser.id
+                        }
+                    });
                     
-                    if (error) {
-                        console.error('从Supabase删除失败:', error);
-                        showError('删除失败：' + error.message);
+                    const result = await response.json();
+                    
+                    if (!response.ok) {
+                        console.error('从后端删除失败:', result.error);
+                        showError('删除失败：' + result.error);
                         return;
                     }
                     
-                    console.log('已从Supabase删除历史记录');
+                    console.log('已从后端删除历史记录');
                 }
                 
                 // 从本地数组删除
@@ -2897,20 +2923,28 @@
             try {
                 console.log('清空所有历史记录...');
                 
-                // 从Supabase删除所有记录
-                if (supabase) {
-                    const { error } = await supabase
-                        .from('history')
-                        .delete()
-                        .eq('user_id', currentUser.id);
+                // 从后端API删除所有记录
+                if (config) {
+                    const response = await fetch('/api/clear-history', {
+                        method: 'DELETE',
+                        headers: {
+                            'user-id': currentUser.id,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            user_id: currentUser.id
+                        })
+                    });
                     
-                    if (error) {
-                        console.error('从Supabase清空失败:', error);
-                        showError('清空失败：' + error.message);
+                    const result = await response.json();
+                    
+                    if (!response.ok) {
+                        console.error('从后端清空失败:', result.error);
+                        showError('清空失败：' + result.error);
                         return;
                     }
                     
-                    console.log('已从Supabase清空所有历史记录');
+                    console.log('已从后端清空所有历史记录');
                 }
                 
                 // 清空本地数组
