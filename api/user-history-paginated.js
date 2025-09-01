@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  console.log('=== user-history-simple API 开始处理 ===');
+  console.log('=== user-history-paginated API 开始处理 ===');
 
   // 设置CORS头
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -46,9 +46,16 @@ export default async function handler(req, res) {
     switch (method) {
       case 'GET':
         try {
-          console.log('简化查询 - 用户ID:', userId);
+          console.log('分页查询 - 用户ID:', userId);
           
-          // 使用最简单的查询 - 只获取数量
+          // 获取分页参数
+          const page = parseInt(req.query.page) || 1;
+          const pageSize = parseInt(req.query.pageSize) || 20;
+          const offset = (page - 1) * pageSize;
+          
+          console.log('分页参数:', { page, pageSize, offset });
+          
+          // 先获取总数
           const { count, error: countError } = await supabase
             .from('history')
             .select('*', { count: 'exact', head: true })
@@ -62,24 +69,31 @@ export default async function handler(req, res) {
             });
           }
 
-          console.log('记录数量:', count);
+          console.log('总记录数:', count);
 
           // 如果数量为0，直接返回
           if (count === 0) {
             return res.status(200).json({ 
               data: [],
               success: true,
-              count: 0
+              pagination: {
+                page: page,
+                pageSize: pageSize,
+                total: 0,
+                totalPages: 0,
+                hasNext: false,
+                hasPrev: false
+              }
             });
           }
 
-          // 获取最新的20条记录
+          // 获取分页数据
           const { data: historyData, error: historyError } = await supabase
             .from('history')
             .select('id, type, prompt, result_image, created_at')
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
-            .limit(20);
+            .range(offset, offset + pageSize - 1);
 
           if (historyError) {
             console.error('查询失败:', historyError);
@@ -89,10 +103,21 @@ export default async function handler(req, res) {
             });
           }
 
+          const totalPages = Math.ceil(count / pageSize);
+          const hasNext = page < totalPages;
+          const hasPrev = page > 1;
+
           return res.status(200).json({ 
             data: historyData || [],
             success: true,
-            count: count
+            pagination: {
+              page: page,
+              pageSize: pageSize,
+              total: count,
+              totalPages: totalPages,
+              hasNext: hasNext,
+              hasPrev: hasPrev
+            }
           });
 
         } catch (error) {
