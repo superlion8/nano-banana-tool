@@ -15,30 +15,30 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // 检查环境变量
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
-    console.error('Supabase配置缺失');
-    return res.status(500).json({ 
-      error: 'Server configuration error',
-      message: 'Supabase configuration not found'
-    });
-  }
+           // 检查环境变量
+         if (!process.env.SUPABASE_URL || (!process.env.SUPABASE_SERVICE_ROLE_KEY && !process.env.SUPABASE_ANON_KEY)) {
+           console.error('Supabase配置缺失');
+           return res.status(500).json({
+             error: 'Server configuration error',
+             message: 'Supabase configuration not found'
+           });
+         }
 
-  // 动态导入 Supabase 客户端
-  let supabase;
-  try {
-    const { createClient } = await import('@supabase/supabase-js');
-    supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_ANON_KEY
-    );
-  } catch (error) {
-    console.error('Supabase客户端初始化失败:', error);
-    return res.status(500).json({ 
-      error: 'Database connection failed',
-      message: error.message 
-    });
-  }
+          // 动态导入 Supabase 客户端
+        let supabase;
+        try {
+          const { createClient } = await import('@supabase/supabase-js');
+          supabase = createClient(
+            process.env.SUPABASE_URL,
+            process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
+          );
+        } catch (error) {
+          console.error('Supabase客户端初始化失败:', error);
+          return res.status(500).json({
+            error: 'Database connection failed',
+            message: error.message
+          });
+        }
 
   try {
     const { user_id, email, name, avatar_url } = req.body;
@@ -54,6 +54,7 @@ export default async function handler(req, res) {
     console.log('同步用户信息:', { user_id, email, name });
 
     // 同步用户信息到 users 表
+    console.log('开始执行 Supabase upsert 操作...');
     const { data: userData, error: userError } = await supabase
       .from('users')
       .upsert({
@@ -67,11 +68,22 @@ export default async function handler(req, res) {
       })
       .select();
 
+    console.log('Supabase 响应:', { userData, userError });
+
     if (userError) {
       console.error('用户同步失败:', userError);
+      console.error('错误详情:', {
+        message: userError.message,
+        details: userError.details,
+        hint: userError.hint,
+        code: userError.code
+      });
       return res.status(500).json({ 
         error: 'Failed to sync user',
-        message: userError.message 
+        message: userError.message,
+        details: userError.details,
+        hint: userError.hint,
+        code: userError.code
       });
     }
 

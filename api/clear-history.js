@@ -14,30 +14,30 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // 检查环境变量
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
-    console.error('Supabase配置缺失');
-    return res.status(500).json({ 
-      error: 'Server configuration error',
-      message: 'Supabase configuration not found'
-    });
-  }
+      // 检查环境变量
+    if (!process.env.SUPABASE_URL || (!process.env.SUPABASE_SERVICE_ROLE_KEY && !process.env.SUPABASE_ANON_KEY)) {
+      console.error('Supabase配置缺失');
+      return res.status(500).json({
+        error: 'Server configuration error',
+        message: 'Supabase configuration not found'
+      });
+    }
 
-  // 动态导入 Supabase 客户端
-  let supabase;
-  try {
-    const { createClient } = await import('@supabase/supabase-js');
-    supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_ANON_KEY
-    );
-  } catch (error) {
-    console.error('Supabase客户端初始化失败:', error);
-    return res.status(500).json({ 
-      error: 'Database connection failed',
-      message: error.message 
-    });
-  }
+      // 动态导入 Supabase 客户端
+    let supabase;
+    try {
+      const { createClient } = await import('@supabase/supabase-js');
+      supabase = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
+      );
+    } catch (error) {
+      console.error('Supabase客户端初始化失败:', error);
+      return res.status(500).json({
+        error: 'Database connection failed',
+        message: error.message
+      });
+    }
 
   try {
 
