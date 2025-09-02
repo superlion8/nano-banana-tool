@@ -50,6 +50,19 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Maximum 3 images allowed' });
         }
 
+        // Check total payload size
+        const requestSize = JSON.stringify(req.body).length;
+        const maxSize = 4 * 1024 * 1024; // 4MB limit for Vercel
+        
+        if (requestSize > maxSize) {
+            return res.status(413).json({ 
+                error: 'Payload too large', 
+                message: 'Total image size exceeds 4MB limit. Please compress your images or use fewer images.',
+                currentSize: `${(requestSize / 1024 / 1024).toFixed(2)}MB`,
+                maxSize: '4MB'
+            });
+        }
+
         console.log(`Processing multi-image generation with ${imageParts.length} images and ${textParts.length} text parts`);
         
         // 记录请求详情用于调试
