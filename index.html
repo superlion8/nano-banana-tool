@@ -637,6 +637,28 @@
             color: #888;
         }
 
+        /* 单图修改相关样式 */
+        .preview-actions {
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .clear-single-btn {
+            padding: 8px 16px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .clear-single-btn:hover {
+            background: #c82333;
+            transform: translateY(-1px);
+        }
+
         .upload-modes {
             display: flex;
             gap: 20px;
@@ -1057,7 +1079,8 @@
                 <div id="editor-tab" class="main-tab-content active">
                     <div class="editor-tabs">
                         <button class="editor-tab-button active" onclick="switchEditorTab('text-to-image', event)">文本生成图像</button>
-                        <button class="editor-tab-button" onclick="switchEditorTab('multi-image', event)">图像编辑</button>
+                        <button class="editor-tab-button" onclick="switchEditorTab('single-image-edit', event)">单图修改</button>
+                        <button class="editor-tab-button" onclick="switchEditorTab('multi-image', event)">多图编辑</button>
                     </div>
 
                     <!-- 文本生成图像 -->
@@ -1069,7 +1092,34 @@
                         <button class="generate-btn" onclick="generateFromText()">生成图像</button>
                     </div>
 
-                    <!-- 图像编辑 -->
+                    <!-- 单图修改 -->
+                    <div id="single-image-edit" class="editor-tab-content">
+                        <div class="input-group">
+                            <label for="single-edit-prompt">修改提示词</label>
+                            <textarea id="single-edit-prompt" placeholder="请输入您想要对图像进行的修改描述，例如：Create a picture of my cat eating a nano-banana in a fancy restaurant under the Gemini constellation"></textarea>
+                        </div>
+                        <div class="input-group">
+                            <label for="single-image">选择图像</label>
+                            <div class="file-input-wrapper">
+                                <input type="file" id="single-image" accept="image/*" onchange="handleSingleImageUpload(this)">
+                                <div class="file-input-display" id="single-image-display">
+                                    <span id="single-file-display-text">点击选择图像文件或拖拽到此处</span>
+                                </div>
+                            </div>
+                            <div class="upload-hint">
+                                <small>支持JPEG、PNG格式，单张图像最大10MB</small>
+                            </div>
+                            <div id="single-image-preview" class="preview-container" style="display: none;">
+                                <img id="single-preview-image" src="" alt="预览图像" class="preview-image">
+                                <div class="preview-actions">
+                                    <button class="clear-single-btn" onclick="clearSingleImage()" title="清除图像">🗑️ 清除</button>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="generate-btn" onclick="generateFromSingleImageEdit()">修改图像</button>
+                    </div>
+
+                    <!-- 多图编辑 -->
                     <div id="multi-image" class="editor-tab-content">
                         <div class="input-group">
                             <label for="multi-prompt">编辑提示词</label>
@@ -1106,7 +1156,8 @@
                             <select id="history-type-filter" onchange="filterHistory()">
                                 <option value="">全部类型</option>
                                 <option value="text-to-image">文本生成图像</option>
-                                <option value="image-edit">图像编辑</option>
+                                <option value="single-image-edit">单图修改</option>
+                                <option value="image-edit">多图编辑</option>
                             </select>
                             <input type="text" id="history-search" placeholder="搜索提示词..." oninput="searchHistory()">
                             <button class="clear-all-history-btn" onclick="clearAllHistory()" style="margin-left: 10px; padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">清空所有</button>
@@ -1166,6 +1217,7 @@
         let currentImageData = null;
         let selectedFile = null;
         let selectedMultiFiles = []; // 多图选择的文件数组
+        let selectedSingleFile = null; // 单图修改选择的文件
         
         // 🚀 全局生成状态管理
         let globalGenerationState = {
@@ -1317,12 +1369,22 @@
                     event.target.classList.add('active');
                 }
                 
-                // 清空多图选择
-                if (tabId !== 'multi-image') {
+                // 清空相关选择
+                if (tabId === 'text-to-image') {
+                    // 切换到文本生成图像时，清空多图和单图选择
                     selectedMultiFiles = [];
                     updateMultiImagePreview();
-                } else {
-                    // 如果切换到图像编辑标签页，显示引用提示
+                    selectedSingleFile = null;
+                    updateSingleImagePreview();
+                } else if (tabId === 'single-image-edit') {
+                    // 切换到单图修改时，清空多图选择
+                    selectedMultiFiles = [];
+                    updateMultiImagePreview();
+                } else if (tabId === 'multi-image') {
+                    // 切换到多图编辑时，清空单图选择
+                    selectedSingleFile = null;
+                    updateSingleImagePreview();
+                    // 如果已有多图，显示引用提示
                     if (selectedMultiFiles.length > 0) {
                         showSuccessMessage(`已加载 ${selectedMultiFiles.length} 张图像，您可以继续添加更多图像或直接编辑`);
                     }
@@ -3504,6 +3566,74 @@
             addMultipleImages(input);
         }
 
+        // 处理单图上传
+        function handleSingleImageUpload(input) {
+            const file = input.files[0];
+            
+            if (!file) {
+                return;
+            }
+            
+            // 验证文件格式
+            if (!file.type.startsWith('image/')) {
+                alert('请选择有效的图像文件');
+                input.value = '';
+                return;
+            }
+            
+            // 只允许JPEG和PNG格式
+            if (file.type !== 'image/jpeg' && file.type !== 'image/jpg' && file.type !== 'image/png') {
+                alert('格式不支持，请使用JPEG或PNG格式');
+                input.value = '';
+                return;
+            }
+            
+            // 检查文件大小（限制为10MB）
+            if (file.size > 10 * 1024 * 1024) {
+                alert('文件太大，请选择小于10MB的图像');
+                input.value = '';
+                return;
+            }
+            
+            // 保存文件
+            selectedSingleFile = file;
+            
+            // 更新预览
+            updateSingleImagePreview();
+        }
+
+        // 更新单图预览
+        function updateSingleImagePreview() {
+            const previewContainer = document.getElementById('single-image-preview');
+            const previewImage = document.getElementById('single-preview-image');
+            const fileDisplay = document.getElementById('single-image-display');
+            const fileDisplayText = document.getElementById('single-file-display-text');
+            
+            if (selectedSingleFile) {
+                previewContainer.style.display = 'block';
+                fileDisplay.classList.add('has-file');
+                fileDisplayText.textContent = `已选择: ${selectedSingleFile.name}`;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImage.src = e.target.result;
+                };
+                reader.readAsDataURL(selectedSingleFile);
+            } else {
+                previewContainer.style.display = 'none';
+                fileDisplay.classList.remove('has-file');
+                fileDisplayText.textContent = '点击选择图像文件或拖拽到此处';
+                previewImage.src = '';
+            }
+        }
+
+        // 清除单图
+        function clearSingleImage() {
+            selectedSingleFile = null;
+            document.getElementById('single-image').value = '';
+            updateSingleImagePreview();
+        }
+
 
 
         // 添加多张图像
@@ -3628,6 +3758,79 @@
             if (confirm(`确定要清空所有 ${selectedMultiFiles.length} 张图像吗？`)) {
                 selectedMultiFiles = [];
                 updateMultiImagePreview();
+            }
+        }
+
+        // 单图修改功能
+        async function generateFromSingleImageEdit() {
+            const prompt = document.getElementById('single-edit-prompt').value.trim();
+            
+            if (!prompt) {
+                showError('请输入修改提示词');
+                return;
+            }
+            
+            if (!selectedSingleFile) {
+                showError('请选择一张图像');
+                return;
+            }
+
+            showLoading();
+            hideError();
+            hideResult();
+            
+            // 显示生成状态提示
+            showGenerationStatus('正在修改图像');
+            
+            try {
+                // 将图像转换为base64
+                const base64Data = await fileToBase64(selectedSingleFile);
+                const imageData = base64Data.split(',')[1]; // 去掉data:image/...;base64,前缀
+                
+                console.log('Single image edit request:', { prompt, imageDataLength: imageData.length });
+                
+                // 确保API_BASE不为undefined
+                const apiUrl = API_BASE ? `${API_BASE}/api/generate-single-image-edit` : '/api/generate-single-image-edit';
+                console.log('generateFromSingleImageEdit: 使用API URL:', apiUrl);
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        imageData: imageData
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    const errorData = data.error || {};
+                    const errorMessage = errorData.message || `HTTP ${response.status}: ${response.statusText}`;
+                    throw new Error(errorMessage);
+                }
+                
+                const result = handleAPIResponse(data, 'Single image edit');
+                console.log('generateFromSingleImageEdit: handleAPIResponse结果:', result);
+                console.log('generateFromSingleImageEdit: currentImageData:', currentImageData);
+                
+                if (result && currentImageData) {
+                    console.log('generateFromSingleImageEdit: 准备保存到历史记录');
+                    // 保存到历史记录
+                    saveToHistory('single-image-edit', prompt, [base64Data], `data:image/png;base64,${currentImageData}`);
+                } else {
+                    console.log('generateFromSingleImageEdit: 无法保存到历史记录，result:', result, 'currentImageData:', currentImageData);
+                }
+                
+            } catch (error) {
+                console.error('Single image edit error:', error);
+                hideGenerationStatus(); // 清除生成状态
+                showError(`图像修改失败: ${error.message}`);
+            } finally {
+                hideLoading();
+                hideGenerationStatus(); // 确保在finally中也清除生成状态
             }
         }
 
@@ -3772,6 +3975,7 @@
 
 
             
+            // 多图拖拽支持
             const multiFileInputDisplay = document.querySelector('.multi-file-input-display');
             
             if (multiFileInputDisplay) {
@@ -3803,6 +4007,47 @@
                         
                         // 更新预览
                         updateMultiImagePreview();
+                    }
+                });
+            }
+
+            // 单图拖拽支持
+            const singleImageDisplay = document.getElementById('single-image-display');
+            
+            if (singleImageDisplay) {
+                singleImageDisplay.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    this.style.background = '#e9ecef';
+                });
+                
+                singleImageDisplay.addEventListener('dragleave', function(e) {
+                    e.preventDefault();
+                    this.style.background = '#f8f9fa';
+                });
+                
+                singleImageDisplay.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.style.background = '#f8f9fa';
+                    
+                    const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+                    
+                    if (files.length > 0) {
+                        const file = files[0]; // 只取第一个文件
+                        
+                        // 验证文件
+                        if (file.type !== 'image/jpeg' && file.type !== 'image/jpg' && file.type !== 'image/png') {
+                            alert('格式不支持，请使用JPEG或PNG格式');
+                            return;
+                        }
+                        
+                        if (file.size > 10 * 1024 * 1024) {
+                            alert('文件太大，请选择小于10MB的图像');
+                            return;
+                        }
+                        
+                        // 设置文件
+                        selectedSingleFile = file;
+                        updateSingleImagePreview();
                     }
                 });
             }
