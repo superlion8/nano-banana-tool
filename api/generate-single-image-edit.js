@@ -1,29 +1,26 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
+// Vercel Serverless Function for single image editing
 export default async function handler(req, res) {
-    // 设置CORS头
+    // Set CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    // 处理预检请求
+    // Handle preflight requests
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
 
-    // 检查环境变量
-    if (!process.env.GOOGLE_API_KEY) {
-        return res.status(500).json({
-            error: 'Server configuration error',
-            message: 'Google API key not configured'
-        });
+    // Only allow POST method
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    if (req.method !== 'POST') {
-        return res.status(405).json({
-            error: 'Method not allowed',
-            message: 'Only POST requests are supported'
-        });
+    const API_KEY = process.env.GEMINI_API_KEY;
+    const MODEL = 'gemini-2.5-flash-image-preview';
+
+    if (!API_KEY) {
+        console.error('GEMINI_API_KEY environment variable is required');
+        return res.status(500).json({ error: 'API key not configured' });
     }
 
     try {
@@ -36,23 +33,12 @@ export default async function handler(req, res) {
             });
         }
 
-        // 初始化Google AI客户端
-        const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-        const model = genAI.getGenerativeModel({ 
-            model: "gemini-2.0-flash-exp",
-            generationConfig: {
-                temperature: 0.7,
-                topK: 40,
-                topP: 0.95,
-                maxOutputTokens: 8192,
-            }
-        });
+        // Import fetch for Node.js environment
+        const fetch = (await import('node-fetch')).default;
 
-        console.log('Single image edit request:', { prompt, imageDataLength: imageData.length });
-
-        // 准备请求内容
-        const contents = [
-            {
+        // 准备请求体，与官方Python代码保持一致
+        const requestBody = {
+            contents: [{
                 parts: [
                     {
                         text: prompt
@@ -64,59 +50,30 @@ export default async function handler(req, res) {
                         }
                     }
                 ]
-            }
-        ];
+            }]
+        };
 
-        // 生成内容
-        const result = await model.generateContent(contents);
-        const response = await result.response;
+        console.log('Single image edit request:', { prompt, imageDataLength: imageData.length });
 
-        console.log('Single image edit response received');
-
-        // 处理响应
-        const parts = response.candidates[0].content.parts;
-        let generatedImage = null;
-        let generatedText = null;
-
-        for (const part of parts) {
-            if (part.text) {
-                generatedText = part.text;
-                console.log('Generated text:', generatedText);
-            } else if (part.inlineData) {
-                generatedImage = part.inlineData.data;
-                console.log('Generated image data length:', generatedImage.length);
-            }
-        }
-
-        if (!generatedImage) {
-            return res.status(500).json({
-                error: 'Generation failed',
-                message: 'No image was generated'
-            });
-        }
-
-        // 返回结果
-        return res.status(200).json({
-            success: true,
-            data: {
-                image: `data:image/png;base64,${generatedImage}`,
-                text: generatedText || '',
-                prompt: prompt
-            }
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-goog-api-key': API_KEY,
+            },
+            body: JSON.stringify(requestBody)
         });
 
-    } catch (error) {
-        console.error('Single image edit error:', error);
+        const data = await response.json();
         
-        let errorMessage = 'An unexpected error occurred';
-        if (error.message) {
-            errorMessage = error.message;
+        if (!response.ok) {
+            console.error('Gemini API Error:', data);
+            return res.status(response.status).json(data);
         }
-
-        return res.status(500).json({
-            error: 'Generation failed',
-            message: errorMessage,
-            details: error.toString()
-        });
+        
+        return res.json(data);
+    } catch (error) {
+        console.error('API Error:', error);
+        return res.status(500).json({ error: 'Internal server error' });
     }
 }

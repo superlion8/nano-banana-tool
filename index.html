@@ -3804,13 +3804,24 @@
                     })
                 });
                 
-                const data = await response.json();
-                
+                // 先检查响应状态
                 if (!response.ok) {
-                    const errorData = data.error || {};
-                    const errorMessage = errorData.message || `HTTP ${response.status}: ${response.statusText}`;
+                    const errorText = await response.text();
+                    console.error('API Error Response:', errorText);
+                    let errorMessage = `HTTP错误: ${response.status}`;
+                    
+                    try {
+                        const errorData = JSON.parse(errorText);
+                        errorMessage = errorData.error?.message || errorMessage;
+                    } catch (e) {
+                        // 如果无法解析错误响应，使用默认错误消息
+                        errorMessage = errorText || errorMessage;
+                    }
+                    
                     throw new Error(errorMessage);
                 }
+                
+                const data = await response.json();
                 
                 const result = handleAPIResponse(data, 'Single image edit');
                 console.log('generateFromSingleImageEdit: handleAPIResponse结果:', result);
