@@ -2803,7 +2803,7 @@
             }
             
             try {
-                const response = await fetch('/api/user-history', {
+                const response = await fetch('/api/user-history-unified', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -2842,7 +2842,7 @@
             try {
                 console.log('从后端API加载历史记录，用户ID:', currentUser.id);
                 
-                const response = await fetch('/api/user-history', {
+                const response = await fetch('/api/user-history-unified?simple=true', {
                     method: 'GET',
                     headers: {
                         'user-id': currentUser.id
