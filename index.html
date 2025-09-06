@@ -2008,8 +2008,8 @@
             try {
                 console.log('开始从后端API加载历史记录，用户ID:', currentUser.id);
                 
-                // 使用简化版后端API
-                const response = await fetch('/api/user-history-simple', {
+                // 使用统一版后端API
+                const response = await fetch('/api/user-history-unified?simple=true', {
                     method: 'GET',
                     headers: {
                         'user-id': currentUser.id
