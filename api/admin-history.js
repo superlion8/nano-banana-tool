@@ -151,12 +151,12 @@ export default async function handler(req, res) {
         result_image: item.result_image,
         input_images: item.input_images,
         created_at: item.created_at,
-        // 添加URL字段
-        result_image_url: item.result_image ? `https://your-domain.com/images/${item.result_image}` : null,
+        // 添加URL字段 - 图像数据是base64格式，直接使用
+        result_image_url: item.result_image || null,
         input_image_urls: item.input_images ? 
           (Array.isArray(item.input_images) ? 
-            item.input_images.map(img => `https://your-domain.com/images/${img}`) : 
-            [`https://your-domain.com/images/${item.input_images}`]
+            item.input_images : 
+            [item.input_images]
           ) : []
       };
     });
