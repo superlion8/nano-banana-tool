@@ -4051,11 +4051,20 @@
                 });
             }
 
-            // 单图拖拽支持
+            // 单图拖拽和点击支持
             const singleImageDisplay = document.getElementById('single-image-display');
+            const singleImageInput = document.getElementById('single-image');
             
-            if (singleImageDisplay) {
-                console.log('单图拖拽功能已初始化');
+            if (singleImageDisplay && singleImageInput) {
+                console.log('单图功能已初始化');
+                
+                // 添加点击事件来触发文件选择
+                singleImageDisplay.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('单图点击: 触发文件选择');
+                    singleImageInput.click();
+                });
                 
                 singleImageDisplay.addEventListener('dragover', function(e) {
                     e.preventDefault();
@@ -4105,7 +4114,7 @@
                     }
                 });
             } else {
-                console.error('单图拖拽: 未找到single-image-display元素');
+                console.error('单图功能: 未找到single-image-display或single-image元素');
             }
         });
 
