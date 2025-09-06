@@ -1882,9 +1882,8 @@
         let _loadingHistory = false; // 🚀 轻量重入锁，防止并发加载
         
         async function loadUserHistory() {
-            if (!currentUser) {
-                return;
-            }
+            // 支持未登录用户加载历史记录
+            console.log('加载历史记录（支持匿名用户）');
             
             // 🚀 防止并发加载造成"菊花闪烁"
             if (_loadingHistory) {
@@ -2006,15 +2005,24 @@
             showHistorySyncStatus();
             
             try {
-                console.log('开始从后端API加载历史记录，用户ID:', currentUser.id);
+                let response;
                 
-                // 使用统一版后端API
-                const response = await fetch('/api/user-history-unified?simple=true', {
-                    method: 'GET',
-                    headers: {
-                        'user-id': currentUser.id
-                    }
-                });
+                if (currentUser) {
+                    // 已登录用户使用原有API
+                    console.log('开始从后端API加载历史记录，用户ID:', currentUser.id);
+                    response = await fetch('/api/user-history-unified?simple=true', {
+                        method: 'GET',
+                        headers: {
+                            'user-id': currentUser.id
+                        }
+                    });
+                } else {
+                    // 未登录用户使用新的匿名API
+                    console.log('开始从后端API加载匿名用户历史记录');
+                    response = await fetch('/api/get-anonymous-history?simple=true', {
+                        method: 'GET'
+                    });
+                }
                 
                 const result = await response.json();
                 
@@ -2093,11 +2101,8 @@
                     return;
                 }
                 
-                if (!currentUser) {
-                    historyList.innerHTML = '<div class="history-placeholder"><p>请先登录查看历史记录</p></div>';
-                    return;
-                }
-                
+                // 支持未登录用户查看历史记录
+                console.log("渲染历史记录（支持匿名用户）");                
                 // 使用传入的历史记录或默认的userHistory
                 const historyData = historyToRender || userHistory;
                 
@@ -2391,10 +2396,8 @@
             console.log('当前用户:', currentUser);
             console.log('当前userHistory长度:', userHistory ? userHistory.length : 'undefined');
             
-            if (!currentUser) {
-                console.log('saveToHistory: 没有当前用户，无法保存');
-                return;
-            }
+            // 支持未登录用户保存历史记录
+            console.log('保存历史记录（支持匿名用户）');
             
             const historyItem = {
                 id: 'hist_' + Date.now(),
@@ -2600,6 +2603,10 @@
                     console.error('解析保存的用户信息失败:', error);
                     localStorage.removeItem('nanoBananaUser');
                 }
+            } else {
+                // 未登录用户也加载历史记录
+                console.log('未登录用户，加载匿名历史记录');
+                await loadUserHistory();
             }
             
             // 测试主标签页切换功能
@@ -2797,26 +2804,45 @@
         
         // Supabase历史记录管理函数
         async function saveHistoryToSupabase(historyItem) {
-            if (!config || !currentUser) {
-                console.log('配置未加载或用户未登录，跳过历史记录同步');
+            if (!config) {
+                console.log('配置未加载，跳过历史记录同步');
                 return false;
             }
             
             try {
-                const response = await fetch('/api/user-history-unified', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'user-id': currentUser.id
-                    },
-                    body: JSON.stringify({
-                        type: historyItem.type,
-                        prompt: historyItem.prompt,
-                        result_image: historyItem.resultImage,
-                        input_images: historyItem.inputImages,
-                        user_id: currentUser.id
-                    })
-                });
+                let response;
+                
+                if (currentUser) {
+                    // 已登录用户使用原有API
+                    response = await fetch('/api/user-history-unified', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'user-id': currentUser.id
+                        },
+                        body: JSON.stringify({
+                            type: historyItem.type,
+                            prompt: historyItem.prompt,
+                            result_image: historyItem.resultImage,
+                            input_images: historyItem.inputImages,
+                            user_id: currentUser.id
+                        })
+                    });
+                } else {
+                    // 未登录用户使用新的匿名API
+                    response = await fetch('/api/save-anonymous-history', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            type: historyItem.type,
+                            prompt: historyItem.prompt,
+                            result_image: historyItem.resultImage,
+                            input_images: historyItem.inputImages
+                        })
+                    });
+                }
                 
                 const result = await response.json();
                 
