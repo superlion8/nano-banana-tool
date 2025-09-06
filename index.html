@@ -2925,11 +2925,15 @@
                         return;
                     }
                     
-                    const response = await fetch(`/api/user-history?id=${numericId}`, {
+                    const response = await fetch('/api/user-history-unified', {
                         method: 'DELETE',
                         headers: {
-                            'user-id': currentUser.id
-                        }
+                            'user-id': currentUser.id,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            id: numericId
+                        })
                     });
                     
                     const result = await response.json();
@@ -3018,25 +3022,27 @@
             try {
                 console.log('清空所有历史记录...');
                 
-                // 从后端API删除所有记录
+                // 从后端API删除所有记录 - 使用统一API
                 if (config) {
-                    const response = await fetch('/api/clear-history', {
-                        method: 'DELETE',
-                        headers: {
-                            'user-id': currentUser.id,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            user_id: currentUser.id
+                    // 由于没有批量删除API，我们逐个删除所有记录
+                    const deletePromises = userHistory.map(item => 
+                        fetch('/api/user-history-unified', {
+                            method: 'DELETE',
+                            headers: {
+                                'user-id': currentUser.id,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                id: parseInt(item.id)
+                            })
                         })
-                    });
+                    );
                     
-                    const result = await response.json();
+                    const responses = await Promise.all(deletePromises);
+                    const failedDeletes = responses.filter(response => !response.ok);
                     
-                    if (!response.ok) {
-                        console.error('从后端清空失败:', result.error);
-                        showError('清空失败：' + result.error);
-                        return;
+                    if (failedDeletes.length > 0) {
+                        console.warn(`有 ${failedDeletes.length} 条记录删除失败`);
                     }
                     
                     console.log('已从后端清空所有历史记录');
