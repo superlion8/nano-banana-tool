@@ -2813,8 +2813,8 @@
                 let response;
                 
                 if (currentUser) {
-                    // 已登录用户使用原有API
-                    response = await fetch('/api/user-history-unified', {
+                    // 已登录用户使用新的URL API
+                    response = await fetch('/api/save-history-with-urls', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -2829,8 +2829,8 @@
                         })
                     });
                 } else {
-                    // 未登录用户使用新的匿名API
-                    response = await fetch('/api/save-anonymous-history', {
+                    // 未登录用户使用新的URL API
+                    response = await fetch('/api/save-history-with-urls', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -2839,7 +2839,8 @@
                             type: historyItem.type,
                             prompt: historyItem.prompt,
                             result_image: historyItem.resultImage,
-                            input_images: historyItem.inputImages
+                            input_images: historyItem.inputImages,
+                            user_id: null
                         })
                     });
                 }
