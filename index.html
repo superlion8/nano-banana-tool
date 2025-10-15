@@ -1064,6 +1064,7 @@
                             <div class="user-details">
                                 <span id="user-name" class="user-name"></span>
                                 <span id="user-email" class="user-email"></span>
+                                <span id="user-generation-count" class="user-generation-count" style="font-size: 12px; color: #888; margin-top: 4px;">今日已生成: 0/200</span>
                             </div>
                             <button id="logout-btn" class="logout-btn" onclick="googleLogout()">登出</button>
                         </div>
@@ -1864,6 +1865,9 @@
                 document.getElementById('user-name').textContent = currentUser.name || 'Google用户';
                 document.getElementById('user-avatar-img').alt = (currentUser.name || 'Google用户') + '的头像';
                 document.getElementById('user-email').textContent = currentUser.email || '未知邮箱';
+                
+                // 更新生成次数显示
+                updateGenerationCountDisplay();
                 
                 console.log('用户信息已更新:', {
                     name: currentUser.name,
@@ -2669,6 +2673,91 @@
                 showLoginPrompt();
                 return false;
             }
+            return true;
+        }
+
+        // 每日生成限制检查
+        const DAILY_GENERATION_LIMIT = 200;
+
+        // 获取今日日期字符串 (YYYY-MM-DD)
+        function getTodayDateString() {
+            const today = new Date();
+            return today.getFullYear() + '-' + 
+                   String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                   String(today.getDate()).padStart(2, '0');
+        }
+
+        // 获取用户今日生成次数
+        function getTodayGenerationCount(userId) {
+            const today = getTodayDateString();
+            const storageKey = `generation_count_${userId}_${today}`;
+            return parseInt(localStorage.getItem(storageKey) || '0');
+        }
+
+        // 增加用户今日生成次数
+        function incrementTodayGenerationCount(userId) {
+            const today = getTodayDateString();
+            const storageKey = `generation_count_${userId}_${today}`;
+            const currentCount = getTodayGenerationCount(userId);
+            const newCount = currentCount + 1;
+            localStorage.setItem(storageKey, String(newCount));
+            console.log(`用户 ${userId} 今日生成次数已更新为: ${newCount}`);
+            
+            // 更新UI显示
+            updateGenerationCountDisplay();
+        }
+
+        // 更新生成次数显示
+        function updateGenerationCountDisplay() {
+            if (currentUser) {
+                const count = getTodayGenerationCount(currentUser.id);
+                const countElement = document.getElementById('user-generation-count');
+                if (countElement) {
+                    countElement.textContent = `今日已生成: ${count}/${DAILY_GENERATION_LIMIT}`;
+                    
+                    // 如果接近限制，改变颜色
+                    if (count >= DAILY_GENERATION_LIMIT) {
+                        countElement.style.color = '#ff4444';
+                        countElement.style.fontWeight = 'bold';
+                    } else if (count >= DAILY_GENERATION_LIMIT * 0.8) {
+                        countElement.style.color = '#ff8800';
+                    } else {
+                        countElement.style.color = '#888';
+                        countElement.style.fontWeight = 'normal';
+                    }
+                }
+            }
+        }
+
+        // 检查是否超过每日生成限制
+        function checkDailyGenerationLimit() {
+            if (!currentUser) {
+                return false; // 未登录，不允许生成
+            }
+
+            const todayCount = getTodayGenerationCount(currentUser.id);
+            console.log(`用户 ${currentUser.id} 今日已生成: ${todayCount}/${DAILY_GENERATION_LIMIT}`);
+            
+            if (todayCount >= DAILY_GENERATION_LIMIT) {
+                showError('今日生成超限，请明天再试');
+                return false;
+            }
+            
+            return true;
+        }
+
+        // 综合检查（登录状态 + 每日限额）
+        function checkGenerationPermission() {
+            // 首先检查登录状态
+            if (!checkLoginStatus()) {
+                return false;
+            }
+            
+            // 然后检查每日限额
+            if (!checkDailyGenerationLimit()) {
+                return false;
+            }
+            
             return true;
         }
 
@@ -3722,6 +3811,12 @@
                     if (inlineData && inlineData.data) {
                         console.log(`${functionName} Found image data, mime_type:`, inlineData.mime_type || inlineData.mimeType);
                         showResult(inlineData.data);
+                        
+                        // 成功生成图像，增加用户今日生成计数
+                        if (currentUser) {
+                            incrementTodayGenerationCount(currentUser.id);
+                        }
+                        
                         return true; // 成功找到图像
                     }
                 }
@@ -3742,8 +3837,8 @@
 
         // 文本生成图像
         async function generateFromText() {
-            // 登录状态检查
-            if (!checkLoginStatus()) {
+            // 登录状态和每日限额检查
+            if (!checkGenerationPermission()) {
                 return;
             }
             
@@ -4053,8 +4148,8 @@
 
         // 单图修改功能
         async function generateFromSingleImageEdit() {
-            // 登录状态检查
-            if (!checkLoginStatus()) {
+            // 登录状态和每日限额检查
+            if (!checkGenerationPermission()) {
                 return;
             }
             
@@ -4142,8 +4237,8 @@
 
         // 图像编辑功能
         async function generateFromMultiImages() {
-            // 登录状态检查
-            if (!checkLoginStatus()) {
+            // 登录状态和每日限额检查
+            if (!checkGenerationPermission()) {
                 return;
             }
             
