@@ -2673,6 +2673,12 @@
 
         // 显示登录提示弹窗
         function showLoginPrompt() {
+            // 检查Google Client ID是否已配置
+            if (GOOGLE_CLIENT_ID === null || GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
+                showError('Google登录未配置。请先配置Google OAuth客户端ID。');
+                return;
+            }
+            
             // 创建登录提示模态框
             const modal = document.createElement('div');
             modal.id = 'login-prompt-modal';
@@ -2695,7 +2701,7 @@
                     background: white;
                     border-radius: 16px;
                     padding: 32px;
-                    max-width: 400px;
+                    max-width: 420px;
                     width: 90%;
                     text-align: center;
                     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
@@ -2716,36 +2722,38 @@
                         color: #666;
                         line-height: 1.5;
                     ">为了产品安全，请登录后再进行生成</p>
-                    <div style="
+                    
+                    <!-- Google Sign-In 按钮容器 -->
+                    <div id="google-signin-container" style="
+                        margin: 20px 0;
                         display: flex;
-                        gap: 12px;
                         justify-content: center;
                     ">
-                        <button id="login-prompt-login" style="
-                            background: #4285f4;
-                            color: white;
-                            border: none;
-                            padding: 12px 24px;
-                            border-radius: 8px;
-                            font-size: 16px;
-                            font-weight: 500;
-                            cursor: pointer;
-                            display: flex;
-                            align-items: center;
-                            gap: 8px;
-                            transition: all 0.2s ease;
-                        " onmouseover="this.style.background='#3367d6'" onmouseout="this.style.background='#4285f4'">
-                            <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" style="width: 18px; height: 18px;">
-                            立即登录
-                        </button>
+                        <div id="g_id_onload"
+                             data-client_id="${GOOGLE_CLIENT_ID}"
+                             data-context="signin"
+                             data-ux_mode="popup"
+                             data-callback="handleGoogleSignIn"
+                             data-auto_prompt="false">
+                        </div>
+                        <div class="g_id_signin"
+                             data-type="standard"
+                             data-shape="rectangular"
+                             data-theme="outline"
+                             data-text="signin_with"
+                             data-size="large"
+                             data-logo_alignment="left">
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px;">
                         <button id="login-prompt-cancel" style="
                             background: #f5f5f5;
                             color: #666;
                             border: none;
-                            padding: 12px 24px;
+                            padding: 10px 20px;
                             border-radius: 8px;
-                            font-size: 16px;
-                            font-weight: 500;
+                            font-size: 14px;
                             cursor: pointer;
                             transition: all 0.2s ease;
                         " onmouseover="this.style.background='#e8e8e8'" onmouseout="this.style.background='#f5f5f5'">
@@ -2769,12 +2777,10 @@
             
             document.body.appendChild(modal);
             
-            // 添加事件监听器
-            document.getElementById('login-prompt-login').addEventListener('click', function() {
-                closeLoginPrompt();
-                googleLogin();
-            });
+            // 确保Google Sign-In API已加载，然后初始化按钮
+            ensureGoogleAPIAndInitialize();
             
+            // 添加事件监听器
             document.getElementById('login-prompt-cancel').addEventListener('click', function() {
                 closeLoginPrompt();
             });
@@ -2794,6 +2800,92 @@
                 }
             };
             document.addEventListener('keydown', handleEsc);
+        }
+        
+        // 确保Google API加载并初始化登录按钮
+        function ensureGoogleAPIAndInitialize() {
+            if (window.google && window.google.accounts) {
+                // API已加载，直接初始化
+                console.log('Google API已就绪，初始化登录按钮');
+                setTimeout(() => {
+                    if (window.google && window.google.accounts && window.google.accounts.id) {
+                        window.google.accounts.id.initialize({
+                            client_id: GOOGLE_CLIENT_ID,
+                            callback: handleGoogleSignIn
+                        });
+                        window.google.accounts.id.renderButton(
+                            document.querySelector('#login-prompt-modal .g_id_signin'),
+                            {
+                                type: 'standard',
+                                shape: 'rectangular',
+                                theme: 'outline',
+                                text: 'signin_with',
+                                size: 'large',
+                                logo_alignment: 'left'
+                            }
+                        );
+                    }
+                }, 100);
+            } else {
+                // API未加载，先加载再初始化
+                console.log('正在加载Google API...');
+                loadGoogleSignInAPIForPrompt();
+            }
+        }
+        
+        // 为登录提示专门加载Google API
+        function loadGoogleSignInAPIForPrompt() {
+            if (document.querySelector('script[src*="gsi/client"]')) {
+                // 脚本已存在，等待加载完成
+                const checkInterval = setInterval(() => {
+                    if (window.google && window.google.accounts) {
+                        clearInterval(checkInterval);
+                        ensureGoogleAPIAndInitialize();
+                    }
+                }, 100);
+                return;
+            }
+            
+            const script = document.createElement('script');
+            script.src = 'https://accounts.google.com/gsi/client';
+            script.async = true;
+            script.defer = true;
+            script.onload = function() {
+                console.log('Google Sign-In API 加载完成，初始化按钮');
+                ensureGoogleAPIAndInitialize();
+            };
+            script.onerror = function() {
+                console.error('Google Sign-In API 加载失败');
+                // 显示备用按钮
+                showFallbackLoginButton();
+            };
+            document.head.appendChild(script);
+        }
+        
+        // 显示备用登录按钮
+        function showFallbackLoginButton() {
+            const container = document.getElementById('google-signin-container');
+            if (container) {
+                container.innerHTML = `
+                    <button onclick="googleLogin(); closeLoginPrompt();" style="
+                        background: #4285f4;
+                        color: white;
+                        border: none;
+                        padding: 12px 24px;
+                        border-radius: 8px;
+                        font-size: 16px;
+                        font-weight: 500;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        transition: all 0.2s ease;
+                    " onmouseover="this.style.background='#3367d6'" onmouseout="this.style.background='#4285f4'">
+                        <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" style="width: 18px; height: 18px;">
+                        Sign in with Google
+                    </button>
+                `;
+            }
         }
 
         // 关闭登录提示弹窗
