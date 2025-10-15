@@ -1528,8 +1528,9 @@
                 
                 console.log('创建的用户对象:', googleUser);
                 
-                // 关闭模态框
+                // 关闭所有登录相关的模态框
                 closeGoogleSignInModal();
+                closeLoginPrompt();
                 
                 // 登录用户
                 loginUser(googleUser);
