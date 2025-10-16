@@ -3884,10 +3884,10 @@
 
         // 文本生成图像
         async function generateFromText() {
-            // 登录状态和每日限额检查
-            if (!checkGenerationPermission()) {
-                return;
-            }
+            // 临时注释掉认证检查，先测试核心功能
+            // if (!checkGenerationPermission()) {
+            //     return;
+            // }
             
             const prompt = document.getElementById('text-prompt').value.trim();
             
@@ -3904,17 +3904,23 @@
             showGenerationStatus('正在生成图像');
 
             try {
-                // 确保API_BASE不为undefined
-                const apiUrl = API_BASE ? `${API_BASE}/api/generate-image` : '/api/generate-image';
-                console.log('generateFromText: 使用API URL:', apiUrl);
+                // 临时使用简化版API进行测试
+                const apiUrl = API_BASE ? `${API_BASE}/api/generate-image-simple` : '/api/generate-image-simple';
+                console.log('generateFromText: 使用简化版API URL:', apiUrl);
                 
-                const response = await fetch(apiUrl, createAuthenticatedFetchOptions({
-                    contents: [{
-                        parts: [{
-                            text: prompt
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: prompt
+                            }]
                         }]
-                    }]
-                }));
+                    })
+                });
 
                 if (!response.ok) {
                     const errorText = await response.text();
