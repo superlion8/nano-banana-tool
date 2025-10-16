@@ -1512,26 +1512,52 @@
         
         // 手动base64解码函数作为最后的fallback
         function base64ToUtf8(base64) {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-            let result = '';
-            let i = 0;
-            
-            base64 = base64.replace(/[^A-Za-z0-9+/]/g, '');
-            
-            while (i < base64.length) {
-                const a = chars.indexOf(base64.charAt(i++));
-                const b = chars.indexOf(base64.charAt(i++));
-                const c = chars.indexOf(base64.charAt(i++));
-                const d = chars.indexOf(base64.charAt(i++));
+            try {
+                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+                let result = '';
+                let i = 0;
                 
-                const bitmap = (a << 18) | (b << 12) | (c << 6) | d;
+                // 处理URL安全的base64
+                base64 = base64.replace(/[-_]/g, function(m) { return m === '-' ? '+' : '/'; });
                 
-                result += String.fromCharCode((bitmap >> 16) & 255);
-                if (c !== 64) result += String.fromCharCode((bitmap >> 8) & 255);
-                if (d !== 64) result += String.fromCharCode(bitmap & 255);
+                // 补齐padding
+                while (base64.length % 4) {
+                    base64 += '=';
+                }
+                
+                // 移除非base64字符
+                base64 = base64.replace(/[^A-Za-z0-9+/=]/g, '');
+                
+                while (i < base64.length) {
+                    const a = chars.indexOf(base64.charAt(i++));
+                    const b = chars.indexOf(base64.charAt(i++));
+                    const c = chars.indexOf(base64.charAt(i++));
+                    const d = chars.indexOf(base64.charAt(i++));
+                    
+                    if (a === -1 || b === -1) break;
+                    
+                    const bitmap = (a << 18) | (b << 12) | ((c === -1 ? 0 : c) << 6) | (d === -1 ? 0 : d);
+                    
+                    result += String.fromCharCode((bitmap >> 16) & 255);
+                    if (c !== -1 && base64.charAt(i-2) !== '=') {
+                        result += String.fromCharCode((bitmap >> 8) & 255);
+                    }
+                    if (d !== -1 && base64.charAt(i-1) !== '=') {
+                        result += String.fromCharCode(bitmap & 255);
+                    }
+                }
+                
+                // 尝试多种UTF-8解码方法
+                try {
+                    return decodeURIComponent(escape(result));
+                } catch (e) {
+                    // 如果escape方法失败，直接返回结果
+                    return result;
+                }
+            } catch (error) {
+                console.error('手动base64解码失败:', error);
+                throw error;
             }
-            
-            return decodeURIComponent(escape(result));
         }
         
         // 处理Google Sign-In回调
@@ -1561,16 +1587,32 @@
                     } catch (e) {
                         console.warn('第一种atob解码失败，尝试fallback方案:', e.message);
                         try {
-                            // fallback方案1：使用decodeURIComponent + escape
-                            decoded = decodeURIComponent(escape(window.atob(base64)));
+                            // fallback方案1：直接使用手动base64解码，避免再次调用atob
+                            decoded = base64ToUtf8(base64);
+                            console.log('手动base64解码成功');
                         } catch (e2) {
-                            console.warn('第二种解码方案失败，尝试第三种方案:', e2.message);
+                            console.warn('手动base64解码失败，尝试字符处理方案:', e2.message);
                             try {
-                                // fallback方案2：手动base64解码
-                                decoded = base64ToUtf8(base64);
+                                // fallback方案2：简单字符替换和处理
+                                const cleanBase64 = base64.replace(/[-_]/g, function(m) { return m === '-' ? '+' : '/'; });
+                                const padded = cleanBase64 + '='.repeat((4 - cleanBase64.length % 4) % 4);
+                                decoded = decodeURIComponent(padded.split('').map(function(c) {
+                                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                                }).join(''));
                             } catch (e3) {
                                 console.error('所有token解码方案都失败:', e3.message);
-                                throw new Error('Token解码失败，请刷新页面重试');
+                                // 最后尝试直接解析原始credential，可能是其他格式
+                                try {
+                                    const directParse = JSON.parse(response.credential);
+                                    if (directParse.email) {
+                                        decoded = JSON.stringify(directParse);
+                                        console.log('直接解析credential成功');
+                                    } else {
+                                        throw new Error('无法识别的credential格式');
+                                    }
+                                } catch (e4) {
+                                    throw new Error('Token解码失败，请刷新页面重试');
+                                }
                             }
                         }
                     }
