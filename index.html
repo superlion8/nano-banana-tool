@@ -1505,14 +1505,52 @@
             }
         }
         
+        // 检测是否为Edge浏览器
+        function isEdgeBrowser() {
+            return navigator.userAgent.indexOf('Edge') > -1 || navigator.userAgent.indexOf('Edg') > -1;
+        }
+        
         // 处理Google Sign-In回调
         function handleGoogleSignIn(response) {
             console.log('Google Sign-In 响应:', response);
+            console.log('当前浏览器:', isEdgeBrowser() ? 'Edge' : 'Other');
             
             if (response.credential) {
-                // 解码JWT令牌获取用户信息
-                const payload = JSON.parse(atob(response.credential.split('.')[1]));
-                console.log('解码的用户信息:', payload);
+                try {
+                    // 解码JWT令牌获取用户信息 - 增加Edge浏览器兼容性
+                    const parts = response.credential.split('.');
+                    if (parts.length !== 3) {
+                        throw new Error('Invalid JWT format');
+                    }
+                    
+                    // 安全的base64解码，兼容Edge浏览器
+                    let base64 = parts[1];
+                    // 补齐base64字符串长度
+                    while (base64.length % 4) {
+                        base64 += '=';
+                    }
+                    
+                    let decoded;
+                    try {
+                        decoded = atob(base64);
+                    } catch (e) {
+                        // Edge浏览器的fallback方案
+                        console.warn('atob failed, using fallback method');
+                        decoded = decodeURIComponent(escape(window.atob(base64)));
+                    }
+                    
+                    const payload = JSON.parse(decoded);
+                    console.log('解码的用户信息:', payload);
+                } catch (error) {
+                    console.error('JWT解析失败:', error);
+                    if (isEdgeBrowser()) {
+                        showError('Edge浏览器登录失败，请尝试刷新页面或使用其他浏览器');
+                        console.error('Edge浏览器特殊错误:', error);
+                    } else {
+                        showError('登录失败：token解析错误');
+                    }
+                    return;
+                }
                 
                 // 创建用户对象 - 使用稳定的邮箱哈希作为ID，确保同一邮箱每次登录都是相同ID
                 const emailHash = btoa(payload.email).replace(/[^a-zA-Z0-9]/g, '');
@@ -2947,23 +2985,38 @@
             if (window.google && window.google.accounts) {
                 // API已加载，直接初始化
                 console.log('Google API已就绪，初始化登录按钮');
+                console.log('浏览器信息:', navigator.userAgent);
+                
                 setTimeout(() => {
                     if (window.google && window.google.accounts && window.google.accounts.id) {
-                        window.google.accounts.id.initialize({
-                            client_id: GOOGLE_CLIENT_ID,
-                            callback: handleGoogleSignIn
-                        });
-                        window.google.accounts.id.renderButton(
-                            document.querySelector('#login-prompt-modal .g_id_signin'),
-                            {
-                                type: 'standard',
-                                shape: 'rectangular',
-                                theme: 'outline',
-                                text: 'signin_with',
-                                size: 'large',
-                                logo_alignment: 'left'
+                        try {
+                            window.google.accounts.id.initialize({
+                                client_id: GOOGLE_CLIENT_ID,
+                                callback: handleGoogleSignIn,
+                                auto_select: false,
+                                cancel_on_tap_outside: false
+                            });
+                            
+                            const buttonElement = document.querySelector('#login-prompt-modal .g_id_signin');
+                            if (buttonElement) {
+                                window.google.accounts.id.renderButton(
+                                    buttonElement,
+                                    {
+                                        type: 'standard',
+                                        shape: 'rectangular',
+                                        theme: 'outline',
+                                        text: 'signin_with',
+                                        size: 'large',
+                                        logo_alignment: 'left'
+                                    }
+                                );
+                                console.log('✅ Google登录按钮渲染成功');
+                            } else {
+                                console.error('❌ 找不到登录按钮容器');
                             }
-                        );
+                        } catch (error) {
+                            console.error('❌ Google API初始化失败:', error);
+                        }
                     }
                 }, 100);
             } else {
@@ -2980,9 +3033,11 @@
                 const checkInterval = setInterval(() => {
                     if (window.google && window.google.accounts) {
                         clearInterval(checkInterval);
-                        ensureGoogleAPIAndInitialize();
+                        // Edge浏览器需要额外延迟
+                        const delay = isEdgeBrowser() ? 300 : 100;
+                        setTimeout(ensureGoogleAPIAndInitialize, delay);
                     }
-                }, 100);
+                }, isEdgeBrowser() ? 200 : 100);
                 return;
             }
             
