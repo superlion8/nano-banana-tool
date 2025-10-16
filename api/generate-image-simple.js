@@ -1,4 +1,4 @@
-// Simplified Vercel Serverless Function for image generation (without authentication for testing)
+// Simplified Vercel Serverless Function with basic auth check
 export default async function handler(req, res) {
     console.log('=== generate-image-simple API 开始处理 ===');
     
@@ -16,6 +16,27 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
+
+    // Simple auth check - just verify token exists
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        console.log('❌ 缺少认证头');
+        return res.status(401).json({ 
+            error: 'Missing authorization',
+            message: '需要登录才能使用此功能' 
+        });
+    }
+
+    const token = authHeader.substring(7);
+    if (!token) {
+        console.log('❌ Token为空');
+        return res.status(401).json({ 
+            error: 'Invalid token',
+            message: '登录状态无效' 
+        });
+    }
+
+    console.log('✅ 认证检查通过');
 
     const API_KEY = process.env.GEMINI_API_KEY;
     const MODEL = 'gemini-2.5-flash-image-preview';
