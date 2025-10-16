@@ -1524,7 +1524,8 @@
                     name: payload.name || payload.email.split('@')[0],
                     avatar: payload.picture,
                     googleId: payload.sub,
-                    picture: payload.picture
+                    picture: payload.picture,
+                    jwtToken: response.credential // 保存JWT token用于API认证
                 };
                 
                 console.log('创建的用户对象:', googleUser);
@@ -2769,6 +2770,30 @@
             return true;
         }
 
+        // 创建带认证头的fetch选项
+        function createAuthenticatedFetchOptions(body) {
+            const options = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            };
+
+            // 添加JWT token到请求头
+            if (currentUser && currentUser.jwtToken) {
+                options.headers['Authorization'] = `Bearer ${currentUser.jwtToken}`;
+                console.log('🔑 已添加认证头到API请求');
+            } else {
+                console.warn('⚠️ 用户未登录或JWT token不存在');
+            }
+
+            if (body) {
+                options.body = JSON.stringify(body);
+            }
+
+            return options;
+        }
+
         // 显示登录提示弹窗
         function showLoginPrompt() {
             // 检查Google Client ID是否已配置
@@ -3820,13 +3845,7 @@
                         console.log(`${functionName} Found image data, mime_type:`, inlineData.mime_type || inlineData.mimeType);
                         showResult(inlineData.data);
                         
-                        // 成功生成图像，增加用户今日生成计数
-                        if (currentUser) {
-                            console.log('📊 成功生成图像，即将增加计数...');
-                            incrementTodayGenerationCount(currentUser.id);
-                        } else {
-                            console.log('⚠️ 成功生成但用户未登录，不增加计数');
-                        }
+                        // 后端已处理生成计数，前端不再需要手动增加
                         
                         return true; // 成功找到图像
                     }
@@ -3872,19 +3891,13 @@
                 const apiUrl = API_BASE ? `${API_BASE}/api/generate-image` : '/api/generate-image';
                 console.log('generateFromText: 使用API URL:', apiUrl);
                 
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [{
-                                text: prompt
-                            }]
+                const response = await fetch(apiUrl, createAuthenticatedFetchOptions({
+                    contents: [{
+                        parts: [{
+                            text: prompt
                         }]
-                    })
-                });
+                    }]
+                }));
 
                 if (!response.ok) {
                     const errorText = await response.text();
@@ -4191,19 +4204,13 @@
                 console.log('Single image edit request:', { prompt, imageDataLength: imageData.length });
                 
                 // 确保API_BASE不为undefined
-                const apiUrl = API_BASE ? `${API_BASE}/api/generate-single-image-edit` : '/api/generate-single-image-edit';
+                const apiUrl = API_BASE ? `${API_BASE}/api/edit-image` : '/api/edit-image';
                 console.log('generateFromSingleImageEdit: 使用API URL:', apiUrl);
                 
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        prompt: prompt,
-                        imageData: imageData
-                    })
-                });
+                const response = await fetch(apiUrl, createAuthenticatedFetchOptions({
+                    prompt: prompt,
+                    imageData: imageData
+                }));
                 
                 // 先检查响应状态
                 if (!response.ok) {
@@ -4321,13 +4328,7 @@
                 const apiUrl = API_BASE ? `${API_BASE}/api/generate-multi-image` : '/api/generate-multi-image';
                 console.log('generateFromMultiImages: 使用API URL:', apiUrl);
                 
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(requestBody)
-                });
+                const response = await fetch(apiUrl, createAuthenticatedFetchOptions(requestBody));
                 
                 let data;
                 try {
