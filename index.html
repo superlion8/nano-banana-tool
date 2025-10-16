@@ -1516,6 +1516,7 @@
             console.log('当前浏览器:', isEdgeBrowser() ? 'Edge' : 'Other');
             
             if (response.credential) {
+                let payload;
                 try {
                     // 解码JWT令牌获取用户信息 - 增加Edge浏览器兼容性
                     const parts = response.credential.split('.');
@@ -1539,7 +1540,7 @@
                         decoded = decodeURIComponent(escape(window.atob(base64)));
                     }
                     
-                    const payload = JSON.parse(decoded);
+                    payload = JSON.parse(decoded);
                     console.log('解码的用户信息:', payload);
                 } catch (error) {
                     console.error('JWT解析失败:', error);
