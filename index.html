@@ -2741,7 +2741,7 @@
                         console.log(`📊 从后端获取生成计数: ${data.currentCount}/${data.limit}`);
                     } else {
                         console.warn('获取生成计数失败，使用默认显示');
-                        countElement.textContent = '今日已生成: ?/200';
+                        countElement.textContent = '今日已生成: 0/200 (计数功能部署中...)';
                         countElement.style.color = '#888';
                     }
                 } catch (error) {
