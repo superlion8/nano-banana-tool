@@ -9,24 +9,40 @@ function getTodayDateString() {
            String(today.getDate()).padStart(2, '0');
 }
 
-// 简化版JWT token解析 (不依赖google-auth-library)
-function parseJwtToken(token) {
+// 验证Google JWT token
+async function verifyGoogleToken(token) {
     try {
-        // 简单解析JWT payload (不验证签名，避免依赖问题)
-        const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+        // 动态导入fetch（如果需要）
+        const fetch = (await import('node-fetch')).default || globalThis.fetch;
+        
+        // 使用Google的公钥验证JWT
+        const response = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=${token}`);
+        
+        if (!response.ok) {
+            throw new Error('Token verification failed');
+        }
+        
+        const payload = await response.json();
+        
+        // 检查token是否为Google颁发且未过期
+        if (!payload.aud || !payload.email || !payload.exp) {
+            throw new Error('Invalid token structure');
+        }
+        
+        // 检查token是否过期
+        const now = Math.floor(Date.now() / 1000);
+        if (payload.exp < now) {
+            throw new Error('Token expired');
+        }
+        
         return {
-            id: payload.sub || payload.user_id || 'anonymous',
-            email: payload.email || 'unknown@email.com',
+            id: payload.sub,
+            email: payload.email,
             name: payload.name || 'Unknown User'
         };
     } catch (error) {
-        console.error('❌ Token解析失败:', error.message);
-        // 返回默认用户而不是抛出错误
-        return {
-            id: 'anonymous',
-            email: 'unknown@email.com', 
-            name: 'Unknown User'
-        };
+        console.error('❌ Token验证失败:', error.message);
+        throw new Error('Invalid or expired token');
     }
 }
 
@@ -111,8 +127,8 @@ export default async function handler(req, res) {
 
         const token = authHeader.substring(7); // 移除 'Bearer ' 前缀
         
-        // 解析JWT token
-        const user = parseJwtToken(token);
+        // 验证JWT token
+        const user = await verifyGoogleToken(token);
         
         const userId = user.id;
         const today = getTodayDateString();

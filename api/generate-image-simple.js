@@ -38,27 +38,52 @@ export default async function handler(req, res) {
 
     console.log('✅ 认证检查通过');
 
-    // 简化版JWT token解析
-    function parseJwtToken(token) {
+    // 验证Google JWT token
+    async function verifyGoogleToken(token) {
         try {
-            const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+            // 使用Google的公钥验证JWT
+            const response = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=${token}`);
+            
+            if (!response.ok) {
+                throw new Error('Token verification failed');
+            }
+            
+            const payload = await response.json();
+            
+            // 检查token是否为Google颁发且未过期
+            if (!payload.aud || !payload.email || !payload.exp) {
+                throw new Error('Invalid token structure');
+            }
+            
+            // 检查token是否过期
+            const now = Math.floor(Date.now() / 1000);
+            if (payload.exp < now) {
+                throw new Error('Token expired');
+            }
+            
             return {
-                id: payload.sub || payload.user_id || 'anonymous',
-                email: payload.email || 'unknown@email.com',
+                id: payload.sub,
+                email: payload.email,
                 name: payload.name || 'Unknown User'
             };
         } catch (error) {
-            console.error('❌ Token解析失败:', error.message);
-            return {
-                id: 'anonymous',
-                email: 'unknown@email.com', 
-                name: 'Unknown User'
-            };
+            console.error('❌ Token验证失败:', error.message);
+            throw new Error('Invalid or expired token');
         }
     }
 
-    const user = parseJwtToken(token);
-    console.log('👤 用户信息:', user.email);
+    // 验证token并获取用户信息
+    let user;
+    try {
+        user = await verifyGoogleToken(token);
+        console.log('👤 用户验证成功:', user.email);
+    } catch (error) {
+        console.error('❌ 用户验证失败:', error.message);
+        return res.status(401).json({ 
+            error: 'Token verification failed',
+            message: '登录状态无效，请重新登录' 
+        });
+    }
 
     const API_KEY = process.env.GEMINI_API_KEY;
     const MODEL = 'gemini-2.5-flash-image-preview';
