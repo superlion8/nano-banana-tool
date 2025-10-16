@@ -2397,9 +2397,9 @@
         
         // 保存生成历史
         async function saveToHistory(type, prompt, inputImages, resultImage) {
-            console.log('saveToHistory 被调用:', { type, prompt, inputImages, resultImage });
-            console.log('当前用户:', currentUser);
-            console.log('当前userHistory长度:', userHistory ? userHistory.length : 'undefined');
+            console.log('📝 saveToHistory 被调用:', { type, prompt, inputImages, resultImage });
+            console.log('📝 当前用户:', currentUser);
+            console.log('📝 当前userHistory长度:', userHistory ? userHistory.length : 'undefined');
             
             // 支持未登录用户保存历史记录
             console.log('保存历史记录（支持匿名用户）');
@@ -2748,16 +2748,24 @@
 
         // 综合检查（登录状态 + 每日限额）
         function checkGenerationPermission() {
+            console.log('🔍 开始检查生成权限...');
+            console.log('当前用户:', currentUser);
+            
             // 首先检查登录状态
             if (!checkLoginStatus()) {
+                console.log('❌ 登录状态检查失败');
                 return false;
             }
+            console.log('✅ 登录状态检查通过');
             
             // 然后检查每日限额
             if (!checkDailyGenerationLimit()) {
+                console.log('❌ 每日限额检查失败');
                 return false;
             }
+            console.log('✅ 每日限额检查通过');
             
+            console.log('✅ 生成权限检查全部通过');
             return true;
         }
 
@@ -3814,7 +3822,10 @@
                         
                         // 成功生成图像，增加用户今日生成计数
                         if (currentUser) {
+                            console.log('📊 成功生成图像，即将增加计数...');
                             incrementTodayGenerationCount(currentUser.id);
+                        } else {
+                            console.log('⚠️ 成功生成但用户未登录，不增加计数');
                         }
                         
                         return true; // 成功找到图像
