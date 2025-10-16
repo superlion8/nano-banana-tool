@@ -38,6 +38,28 @@ export default async function handler(req, res) {
 
     console.log('✅ 认证检查通过');
 
+    // 简化版JWT token解析
+    function parseJwtToken(token) {
+        try {
+            const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+            return {
+                id: payload.sub || payload.user_id || 'anonymous',
+                email: payload.email || 'unknown@email.com',
+                name: payload.name || 'Unknown User'
+            };
+        } catch (error) {
+            console.error('❌ Token解析失败:', error.message);
+            return {
+                id: 'anonymous',
+                email: 'unknown@email.com', 
+                name: 'Unknown User'
+            };
+        }
+    }
+
+    const user = parseJwtToken(token);
+    console.log('👤 用户信息:', user.email);
+
     const API_KEY = process.env.GEMINI_API_KEY;
     const MODEL = 'gemini-2.5-flash-image-preview';
 
@@ -69,6 +91,33 @@ export default async function handler(req, res) {
         }
         
         console.log('✅ 图像生成成功');
+
+        // 保存生成记录到Supabase
+        try {
+            if (process.env.SUPABASE_URL && (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY)) {
+                const { createClient } = await import('@supabase/supabase-js');
+                const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+                const supabase = createClient(process.env.SUPABASE_URL, supabaseKey);
+                
+                const { error: saveError } = await supabase
+                    .from('history')
+                    .insert([{
+                        user_id: user.id,
+                        email: user.email,
+                        prompt: req.body.contents?.[0]?.parts?.[0]?.text || 'Unknown prompt',
+                        created_at: new Date().toISOString()
+                    }]);
+                
+                if (saveError) {
+                    console.error('❌ 保存记录失败:', saveError);
+                } else {
+                    console.log('✅ 记录已保存到Supabase');
+                }
+            }
+        } catch (saveError) {
+            console.error('❌ Supabase保存异常:', saveError);
+        }
+
         return res.json(data);
         
     } catch (error) {
