@@ -353,6 +353,31 @@ app.post('/api/generate-multi-image', verifyGoogleToken, checkDailyLimit, async 
     }
 });
 
+// 获取用户今日生成计数API
+app.get('/api/user-generation-count', verifyGoogleToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const today = getTodayDateString();
+        const countKey = `${userId}_${today}`;
+        
+        const currentCount = userGenerationCounts.get(countKey) || 0;
+        
+        res.json({
+            currentCount: currentCount,
+            limit: DAILY_GENERATION_LIMIT,
+            remaining: DAILY_GENERATION_LIMIT - currentCount,
+            date: today
+        });
+        
+    } catch (error) {
+        console.error('❌ 获取用户生成计数失败:', error);
+        res.status(500).json({ 
+            error: 'Failed to get user generation count',
+            message: '获取生成计数失败' 
+        });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });

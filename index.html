@@ -2708,25 +2708,50 @@
             updateGenerationCountDisplay();
         }
 
-        // 更新生成次数显示
-        function updateGenerationCountDisplay() {
-            if (currentUser) {
-                const count = getTodayGenerationCount(currentUser.id);
-                const countElement = document.getElementById('user-generation-count');
-                if (countElement) {
-                    countElement.textContent = `今日已生成: ${count}/${DAILY_GENERATION_LIMIT}`;
+        // 从后端获取并更新生成次数显示
+        async function updateGenerationCountDisplay() {
+            const countElement = document.getElementById('user-generation-count');
+            if (!countElement) return;
+            
+            if (currentUser && currentUser.jwtToken) {
+                try {
+                    const apiUrl = API_BASE ? `${API_BASE}/api/user-generation-count` : '/api/user-generation-count';
+                    const response = await fetch(apiUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${currentUser.jwtToken}`
+                        }
+                    });
                     
-                    // 如果接近限制，改变颜色
-                    if (count >= DAILY_GENERATION_LIMIT) {
-                        countElement.style.color = '#ff4444';
-                        countElement.style.fontWeight = 'bold';
-                    } else if (count >= DAILY_GENERATION_LIMIT * 0.8) {
-                        countElement.style.color = '#ff8800';
+                    if (response.ok) {
+                        const data = await response.json();
+                        countElement.textContent = `今日已生成: ${data.currentCount}/${data.limit}`;
+                        
+                        // 如果接近限制，改变颜色
+                        if (data.currentCount >= data.limit) {
+                            countElement.style.color = '#ff4444';
+                            countElement.style.fontWeight = 'bold';
+                        } else if (data.currentCount >= data.limit * 0.8) {
+                            countElement.style.color = '#ff8800';
+                        } else {
+                            countElement.style.color = '#888';
+                            countElement.style.fontWeight = 'normal';
+                        }
+                        
+                        console.log(`📊 从后端获取生成计数: ${data.currentCount}/${data.limit}`);
                     } else {
+                        console.warn('获取生成计数失败，使用默认显示');
+                        countElement.textContent = '今日已生成: ?/200';
                         countElement.style.color = '#888';
-                        countElement.style.fontWeight = 'normal';
                     }
+                } catch (error) {
+                    console.error('获取生成计数出错:', error);
+                    countElement.textContent = '今日已生成: ?/200';
+                    countElement.style.color = '#888';
                 }
+            } else {
+                countElement.textContent = '请先登录';
+                countElement.style.color = '#888';
             }
         }
 
@@ -2747,26 +2772,18 @@
             return true;
         }
 
-        // 综合检查（登录状态 + 每日限额）
+        // 综合检查（仅检查登录状态，后端会处理限制）
         function checkGenerationPermission() {
             console.log('🔍 开始检查生成权限...');
             console.log('当前用户:', currentUser);
             
-            // 首先检查登录状态
+            // 只检查登录状态，限制检查由后端处理
             if (!checkLoginStatus()) {
                 console.log('❌ 登录状态检查失败');
                 return false;
             }
-            console.log('✅ 登录状态检查通过');
+            console.log('✅ 前端权限检查通过，后端将处理限制检查');
             
-            // 然后检查每日限额
-            if (!checkDailyGenerationLimit()) {
-                console.log('❌ 每日限额检查失败');
-                return false;
-            }
-            console.log('✅ 每日限额检查通过');
-            
-            console.log('✅ 生成权限检查全部通过');
             return true;
         }
 
