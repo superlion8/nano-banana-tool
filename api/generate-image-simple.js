@@ -61,10 +61,15 @@ export default async function handler(req, res) {
                 throw new Error('Token expired');
             }
             
+            // 生成与前端一致的用户ID
+            const emailHash = Buffer.from(payload.email).toString('base64').replace(/[^a-zA-Z0-9]/g, '');
+            const stableUserId = `google_${emailHash}`;
+            
             return {
-                id: payload.sub,
+                id: stableUserId,
                 email: payload.email,
-                name: payload.name || 'Unknown User'
+                name: payload.name || 'Unknown User',
+                googleId: payload.sub
             };
         } catch (error) {
             console.error('❌ Token验证失败:', error.message);
