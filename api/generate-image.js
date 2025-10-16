@@ -2,9 +2,6 @@ const { OAuth2Client } = require('google-auth-library');
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const client = new OAuth2Client(GOOGLE_CLIENT_ID);
-
-// 用户生成次数存储 (注意：Vercel无状态，需要外部存储)
-const userGenerationCounts = new Map();
 const DAILY_GENERATION_LIMIT = 200;
 
 // 获取今日日期字符串
@@ -35,21 +32,35 @@ async function verifyGoogleToken(token) {
     }
 }
 
-// 增加用户生成计数
-function incrementUserGenerationCount(userId) {
+// 从Supabase获取用户今日生成计数
+async function getTodayGenerationCount(supabase, userId) {
     const today = getTodayDateString();
-    const countKey = `${userId}_${today}`;
-    const currentCount = userGenerationCounts.get(countKey) || 0;
-    const newCount = currentCount + 1;
     
-    userGenerationCounts.set(countKey, newCount);
-    console.log(`📊 用户 ${userId} 生成计数更新: ${newCount}/${DAILY_GENERATION_LIMIT}`);
-    
-    return newCount;
+    try {
+        // 从history表统计今日该用户的生成记录数
+        const { count, error } = await supabase
+            .from('history')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .gte('created_at', `${today} 00:00:00`)
+            .lt('created_at', `${today} 23:59:59`);
+            
+        if (error) {
+            console.error('获取生成计数失败:', error);
+            return 0;
+        }
+        
+        return count || 0;
+    } catch (error) {
+        console.error('数据库查询失败:', error);
+        return 0;
+    }
 }
 
 // Vercel Serverless Function for image generation with authentication
 export default async function handler(req, res) {
+    console.log('=== generate-image API 开始处理 ===');
+    
     // Set CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -78,6 +89,27 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Google Client ID not configured' });
     }
 
+    // 检查Supabase环境变量
+    if (!process.env.SUPABASE_URL || (!process.env.SUPABASE_SERVICE_ROLE_KEY && !process.env.SUPABASE_ANON_KEY)) {
+        return res.status(500).json({
+            error: 'Server configuration error',
+            message: 'Supabase configuration not found'
+        });
+    }
+
+    // 动态导入 Supabase 客户端
+    let supabase;
+    try {
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+        supabase = createClient(process.env.SUPABASE_URL, supabaseKey);
+    } catch (error) {
+        return res.status(500).json({
+            error: 'Database connection failed',
+            message: error.message
+        });
+    }
+
     try {
         // 验证认证头
         const authHeader = req.headers.authorization;
@@ -93,13 +125,14 @@ export default async function handler(req, res) {
         // 验证Google JWT token
         const user = await verifyGoogleToken(token);
         
-        // 检查每日限制
+        // 检查每日限制 - 从Supabase获取真实计数
         const userId = user.id;
-        const today = getTodayDateString();
-        const countKey = `${userId}_${today}`;
-        const currentCount = userGenerationCounts.get(countKey) || 0;
+        const currentCount = await getTodayGenerationCount(supabase, userId);
+        
+        console.log(`📊 用户 ${user.email} 当前生成计数: ${currentCount}/${DAILY_GENERATION_LIMIT}`);
         
         if (currentCount >= DAILY_GENERATION_LIMIT) {
+            console.log(`❌ 用户 ${userId} 今日生成已达限制: ${currentCount}/${DAILY_GENERATION_LIMIT}`);
             return res.status(429).json({ 
                 error: 'Daily limit exceeded',
                 message: '今日生成超限，请明天再试',
@@ -138,9 +171,37 @@ export default async function handler(req, res) {
                              );
         
         if (hasImageData) {
-            // 成功生成图像，增加用户计数
-            const newCount = incrementUserGenerationCount(user.id);
-            console.log(`🎯 用户 ${user.email} 成功生成图像，当前计数: ${newCount}/${DAILY_GENERATION_LIMIT}`);
+            // 成功生成图像，保存到history表 (这会自动增加计数)
+            try {
+                const imageData = data.candidates[0].content.parts.find(part => 
+                    (part.inline_data || part.inlineData) && 
+                    (part.inline_data?.data || part.inlineData?.data)
+                );
+                
+                const base64Data = imageData.inline_data?.data || imageData.inlineData?.data;
+                const prompt = req.body.contents?.[0]?.parts?.[0]?.text || '文本生成图像';
+                
+                // 保存到Supabase history表
+                const { error: saveError } = await supabase
+                    .from('history')
+                    .insert({
+                        user_id: userId,
+                        type: 'text-to-image',
+                        prompt: prompt,
+                        result_image: base64Data,
+                        created_at: new Date().toISOString()
+                    });
+                    
+                if (saveError) {
+                    console.error('保存生成记录到数据库失败:', saveError);
+                    // 不影响图像生成结果返回，只记录错误
+                } else {
+                    console.log(`🎯 用户 ${user.email} 成功生成图像并保存到数据库`);
+                }
+            } catch (saveError) {
+                console.error('保存生成记录时出错:', saveError);
+                // 不影响图像生成结果返回
+            }
         }
         
         return res.json(data);
